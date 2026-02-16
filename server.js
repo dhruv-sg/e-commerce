@@ -10,14 +10,14 @@ app.get('/', (req, res) => res.json({ ok: true, msg: 'Secure E-commerce API (NOD
 
 const PORT = process.env.PORT || 4000;
 
-const userRoute = require('./userRoute')
+const userRoute = require('./routes/userRoute')
 app.use("/user", userRoute)
 
-const productRoute = require('./productRoute')
+const productRoute = require('./routes/productRoute')
 app.use("/product", productRoute)
 
 
-const orderRoute = require('./orderRoute')
+const orderRoute = require('./routes/orderRoute')
 app.use("/order", orderRoute)
 
 

@@ -1,7 +1,7 @@
 const express = require("express")
 const router = express.Router()
-const User = require("./userModel")
-const { generateJWT, generateOneTimeToken, authMiddleware } = require('./auth')
+const User = require("../models/userModel")
+const { generateJWT, generateOneTimeToken, authMiddleware } = require('../auth')
 
 
 router.post('/signup', async (req, res) => {
@@ -13,7 +13,7 @@ router.post('/signup', async (req, res) => {
         const payload = {
             id: response.id,
             email: response.email,
-             role: response.role
+            role: response.role
         }
         const token = generateJWT(payload);
 
@@ -26,32 +26,32 @@ router.post('/signup', async (req, res) => {
     }
 })
 
-router.post('/login',async (req,res) => {
+router.post('/login', async (req, res) => {
     try {
         //getting email,and password from body
-        const{email,password} = req.body;
-    
-        const user = await User.findOne({email:email})
+        const { email, password } = req.body;
+
+        const user = await User.findOne({ email: email })
 
         //if user not exists and even if paswrod not match retun error
-        if(!user || !(await user.comparePassword(password))){
-            return res.status(401).json({error : "invalid email pr password"})
+        if (!user || !(await user.comparePassword(password))) {
+            return res.status(401).json({ error: "invalid email pr password" })
         }
-        
+
         // if all goes right then generate token
         const payload = {
             id: user.id,
             email: user.email,
-             role: user.role
+            role: user.role
         }
         const token = generateJWT(payload);
-        
-        res.json({token})
-       
-        
+
+        res.json({ token })
+
+
     } catch (error) {
         console.log(error);
-        
+
     }
 })
 

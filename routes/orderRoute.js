@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const Order = require('./orderModel');
-const Product = require('./productModel');
-const { generateJWT, generateOneTimeToken, adminOnly, authMiddleware } = require('./auth')
-const OneTimeAction = require('./OneTimeAction');
+const Order = require('../models/orderModel');
+const Product = require('../models/productModel');
+const { generateJWT, generateOneTimeToken, adminOnly, authMiddleware } = require('../auth')
+const OneTimeAction = require('../OneTimeAction');
 const { v4: uuidv4 } = require('uuid');
 
 // this will generate perchase token
