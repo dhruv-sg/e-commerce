@@ -6,22 +6,22 @@ const db = require("./db")
 dotenv.config();
 app.use(express.json());
 
-app.get('/', (req, res) => res.json({ ok: true, msg: 'Secure E-commerce API' }));
+app.get('/', (req, res) => res.json({ ok: true, msg: 'Secure E-commerce API (NODEJS)' }));
 
 const PORT = process.env.PORT || 4000;
 
 const userRoute = require('./userRoute')
-app.use("/user",userRoute)
+app.use("/user", userRoute)
 
 const productRoute = require('./productRoute')
-app.use("/product",productRoute)
+app.use("/product", productRoute)
 
 
 const orderRoute = require('./orderRoute')
-app.use("/order",orderRoute)
+app.use("/order", orderRoute)
 
 
 
-app.listen(PORT,(req,res)=>{
+app.listen(PORT, (req, res) => {
     console.log('server running');
 })

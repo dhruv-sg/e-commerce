@@ -89,4 +89,4 @@ router.get('/all', authMiddleware, adminOnly, async (req, res) => {
 
 
 
-module.exports= router
+module.exports = router
