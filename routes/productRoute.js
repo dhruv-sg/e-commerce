@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { generateJWT, generateOneTimeToken, adminOnly, authMiddleware } = require('./auth')
-const Product = require('./models/productModel');
+const { generateJWT, generateOneTimeToken, adminOnly, authMiddleware } = require('../auth')
+const Product = require('../models/productModel');
 
 router.post('/', authMiddleware, adminOnly, async (req, res) => {
   try {
