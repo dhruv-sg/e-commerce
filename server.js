@@ -20,6 +20,9 @@ app.use("/product", productRoute)
 const orderRoute = require('./routes/orderRoute')
 app.use("/order", orderRoute)
 
+const categoryRoute = require('./routes/categoryRoute')
+app.use("/api/categories", categoryRoute)
+
 
 
 app.listen(PORT, (req, res) => {

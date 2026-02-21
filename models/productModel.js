@@ -1,45 +1,53 @@
 const mongoose = require('mongoose');
 
-const ReviewSubSchema = new mongoose.Schema({
-    user: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-    },
-    rating: {
-        type: Number,
-        min: 1,
-        max: 5,
-        required: true
-    },
-    comment: {
-        type: String
-    },
-    createdAt: {
-        type: Date,
-        default: Date.now
-    }
-});
-
 const ProductSchema = new mongoose.Schema({
-    title: {
+    name: {
         type: String,
-        required: true
+        required: true,
+        trim: true
     },
     description: {
-        type: String
+        type: String,
+        required: true
     },
     price: {
         type: Number,
         required: true
     },
+    discountPrice: {
+        type: Number,
+        default: 0
+    },
+    category: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Category',
+        required: true
+    },
+    brand: {
+        type: String,
+        required: true
+    },
+    images: [
+        {
+            type: String,
+            // required: true
+        }
+    ],
     stock: {
         type: Number,
         default: 0
     },
-    reviews: [ReviewSubSchema],
+    ratings: {
+        type: Number,
+        default: 0
+    },
+    numReviews: {
+        type: Number,
+        default: 0
+    },
     createdAt: {
-        type: Date, default: Date.now
+        type: Date,
+        default: Date.now
     }
 });
 
