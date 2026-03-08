@@ -6,6 +6,12 @@ const OrderItemSchema = new mongoose.Schema({
         ref: 'Product',
         required: true
     },
+    name: String, // Capture name at order time
+    price: {      // Capture price at order time
+        type: Number,
+        required: true
+    },
+    image: String, // Capture image URL at order time
     quantity: {
         type: Number,
         required: true,
@@ -20,17 +26,38 @@ const OrderSchema = new mongoose.Schema({
         required: true
     },
     items: [OrderItemSchema],
+    shippingAddress: {
+        street: { type: String, required: true },
+        city: { type: String, required: true },
+        state: { type: String, required: true },
+        zip: { type: String, required: true },
+        phone: { type: String, required: true }
+    },
+    paymentMethod: {
+        type: String,
+        enum: ['COD', 'Online'],
+        required: true
+    },
+    paymentStatus: {
+        type: String,
+        enum: ['UNPAID', 'PAID', 'FAILED', 'REFUNDED'],
+        default: 'UNPAID'
+    },
+    razorpayOrderId: {
+        type: String
+    },
     total: {
         type: Number,
         required: true
     },
     status: {
         type: String,
-        enum: ['created', 'paid', 'shipped', 'cancelled'],
-        default: 'created'
+        enum: ['PENDING_PAYMENT', 'Processing', 'Shipped', 'Delivered', 'Cancelled'],
+        default: 'PENDING_PAYMENT'
     },
     createdAt: {
-        type: Date, default: Date.now
+        type: Date,
+        default: Date.now
     }
 });
 
