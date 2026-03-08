@@ -4,9 +4,14 @@ const User = require("../models/userModel")
 const { generateJWT, generateOneTimeToken, authMiddleware } = require('../auth')
 
 
-router.post('/signup', async (req, res) => {
+const { upload } = require('../config/cloudinary');
+
+router.post('/signup', upload.single('image'), async (req, res) => {
     try {
         const data = req.body;
+        if (req.file) {
+            data.image = req.file.path;
+        }
 
         const newUser = new User(data)
         const response = await newUser.save()

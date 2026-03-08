@@ -2,14 +2,29 @@ const express = require('express');
 const router = express.Router();
 const { generateJWT, generateOneTimeToken, adminOnly, authMiddleware } = require('../auth')
 const Product = require('../models/productModel');
+const { upload } = require('../config/cloudinary');
 
-router.post('/', authMiddleware, adminOnly, async (req, res) => {
+router.post('/', authMiddleware, adminOnly, upload.array('images', 5), async (req, res) => {
   try {
-    const { name, description, price, discountPrice, category, brand, images, stock } = req.body;
-    const p = new Product({ name, description, price, discountPrice, category, brand, images, stock });
+    const { name, description, price, discountPrice, category, brand, stock } = req.body;
+
+    // Get URLs of uploaded images from Cloudinary
+    const imageUrls = req.files.map(file => file.path);
+
+    const p = new Product({
+      name,
+      description,
+      price,
+      discountPrice,
+      category,
+      brand,
+      images: imageUrls,
+      stock
+    });
+
     await p.save();
     res.status(201).json(p);
-    console.log("product added");
+    console.log("product added with images");
   } catch (err) {
     console.log(err);
     res.status(400).json({ error: err.message });

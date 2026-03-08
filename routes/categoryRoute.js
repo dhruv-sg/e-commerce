@@ -2,11 +2,13 @@ const express = require('express');
 const router = express.Router();
 const Category = require('../models/categoryModel');
 const { adminOnly, authMiddleware } = require('../auth');
+const { upload } = require('../config/cloudinary');
 
 // Create a new category (Admin only)
-router.post('/', authMiddleware, adminOnly, async (req, res) => {
+router.post('/', authMiddleware, adminOnly, upload.single('image'), async (req, res) => {
     try {
-        const { name, slug, image } = req.body;
+        const { name, slug } = req.body;
+        const image = req.file ? req.file.path : '';
         const category = new Category({ name, slug, image });
         await category.save();
         res.status(201).json(category);
