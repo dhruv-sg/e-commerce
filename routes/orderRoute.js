@@ -43,16 +43,17 @@ router.post('/', authMiddleware, async (req, res) => {
         return res.status(400).json({ error: `Not enough stock for ${product.name}` });
       }
 
+      // Calculate total using database price (prefer discountPrice)
+      const itemPrice = product.discountPrice || product.price;
       finalItems.push({
         product: product._id,
         name: product.name,
-        price: product.price,
+        price: itemPrice,
         image: product.images[0],
         quantity: item.quantity
       });
 
-      // Calculate total using database price
-      calculatedTotal += product.price * item.quantity;
+      calculatedTotal += itemPrice * item.quantity;
     }
 
     const order = new Order({
