@@ -1,9 +1,13 @@
 const express = require("express")
+const cors = require("cors")
 const app = express()
 const dotenv = require('dotenv');
 const db = require("./db")
 
 dotenv.config();
+
+// Enable CORS for all origins
+app.use(cors());
 app.use(express.json());
 
 app.get('/', (req, res) => res.json({ ok: true, msg: 'Secure E-commerce API (NODEJS)' }));

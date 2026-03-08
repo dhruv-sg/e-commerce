@@ -41,6 +41,20 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /list - returning only name, price, images, and category
+router.get('/list', async (req, res) => {
+  try {
+    const products = await Product.find()
+      .select('name price images category')
+      .populate('category', 'name slug')
+      .lean();
+    res.json(products);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 
 //  to Get single product
 router.get('/:id', async (req, res) => {
