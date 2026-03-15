@@ -6,12 +6,17 @@ const OrderItemSchema = new mongoose.Schema({
         ref: 'Product',
         required: true
     },
+    variant: {
+        type: mongoose.Schema.Types.ObjectId,
+    },
     name: String, // Capture name at order time
     price: {      // Capture price at order time
         type: Number,
         required: true
     },
     image: String, // Capture image URL at order time
+    color: String, // Added variant color
+    size: String,  // Added variant size
     quantity: {
         type: Number,
         required: true,

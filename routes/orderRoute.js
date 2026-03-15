@@ -39,17 +39,51 @@ router.post('/', authMiddleware, async (req, res) => {
     for (const item of orderItems) {
       const product = await Product.findById(item.product);
       if (!product) return res.status(404).json({ error: `Product ${item.product} not found` });
-      if (product.stock < item.quantity) {
-        return res.status(400).json({ error: `Not enough stock for ${product.name}` });
+
+      let itemPrice = product.discountPrice || product.price;
+      let itemImage = (product.images && product.images.length > 0) ? product.images[0] : null;
+
+      let variantId = item.variant || product._id;
+      let selectedVariant = null;
+
+      // 1. Try finding by explicit variant ID first
+      if (item.variant && item.variant.toString() !== product._id.toString()) {
+        selectedVariant = product.variants.find(v => v._id.toString() === item.variant.toString());
+      }
+      // 2. Fallback to color/size matching if ID not provided or not found
+      else if (item.color || item.size) {
+        selectedVariant = product.variants.find(v =>
+          (!item.color || v.color === item.color) &&
+          (!item.size || v.size === item.size)
+        );
       }
 
-      // Calculate total using database price (prefer discountPrice)
-      const itemPrice = product.discountPrice || product.price;
+      if (selectedVariant) {
+        variantId = selectedVariant._id;
+        if (selectedVariant.stock < item.quantity) {
+          return res.status(400).json({ error: `Not enough stock for ${product.name} (${selectedVariant.color || ''} ${selectedVariant.size || ''})` });
+        }
+        itemPrice = selectedVariant.discountPrice || selectedVariant.price || itemPrice;
+        if (selectedVariant.images && selectedVariant.images.length > 0) {
+          itemImage = selectedVariant.images[0];
+        }
+      } else if (product.variants.length > 0 && (item.variant || item.color || item.size)) {
+        return res.status(400).json({ error: `Specific variant not found for ${product.name}` });
+      } else {
+        // No variant selected/found, check global stock
+        if (product.stock < item.quantity) {
+          return res.status(400).json({ error: `Not enough stock for ${product.name}` });
+        }
+      }
+
       finalItems.push({
         product: product._id,
+        variant: variantId,
         name: product.name,
         price: itemPrice,
-        image: product.images[0],
+        image: itemImage,
+        color: item.color || (selectedVariant ? selectedVariant.color : null),
+        size: item.size || (selectedVariant ? selectedVariant.size : null),
         quantity: item.quantity
       });
 
@@ -83,8 +117,15 @@ router.post('/', authMiddleware, async (req, res) => {
     // 2. Only update stock for COD immediately. 
     // For Online, we update after successful payment verification.
     if (paymentMethod === 'COD') {
-      for (const item of orderItems) {
-        await Product.findByIdAndUpdate(item.product, { $inc: { stock: -item.quantity } });
+      for (const item of finalItems) {
+        if (item.product.toString() !== item.variant.toString()) {
+          await Product.updateOne(
+            { _id: item.product, "variants._id": item.variant },
+            { $inc: { "variants.$.stock": -item.quantity } }
+          );
+        } else {
+          await Product.findByIdAndUpdate(item.product, { $inc: { stock: -item.quantity } });
+        }
       }
     }
 
@@ -122,7 +163,14 @@ router.post('/verify-payment', authMiddleware, async (req, res) => {
 
       // 3. Update stock after successful payment
       for (const item of order.items) {
-        await Product.findByIdAndUpdate(item.product, { $inc: { stock: -item.quantity } });
+        if (item.product.toString() !== item.variant.toString()) {
+          await Product.updateOne(
+            { _id: item.product, "variants._id": item.variant },
+            { $inc: { "variants.$.stock": -item.quantity } }
+          );
+        } else {
+          await Product.findByIdAndUpdate(item.product, { $inc: { stock: -item.quantity } });
+        }
       }
 
       console.log(`✅ Payment Verified Successfully for Order: ${order._id}`);
@@ -150,6 +198,17 @@ router.get('/myorders', authMiddleware, async (req, res) => {
   }
 });
 
+// Admin: Get all orders
+router.get('/admin/all', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const orders = await Order.find().populate('user', 'name email').sort({ createdAt: -1 });
+    res.json(orders);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Get order by ID
 router.get('/:id', authMiddleware, async (req, res) => {
   try {
@@ -161,17 +220,6 @@ router.get('/:id', authMiddleware, async (req, res) => {
     }
 
     res.json(order);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Admin: Get all orders
-router.get('/admin/all', authMiddleware, adminOnly, async (req, res) => {
-  try {
-    const orders = await Order.find().populate('user', 'name email').sort({ createdAt: -1 });
-    res.json(orders);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });

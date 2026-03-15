@@ -1,491 +1,228 @@
-# E-Commerce Backend API Guide
+# 🚀 E-Commerce Professional API Guide
 
-## 📋 Overview
-This is a Node.js/Express backend for an e-commerce application with JWT authentication, role-based access control, and a secure token-based purchase system.
-
-## 🛠️ Tech Stack
-- **Framework**: Express.js
-- **Database**: MongoDB (Mongoose ODM)
-- **Authentication**: JWT (JSON Web Tokens)
-- **Password Hashing**: bcrypt
-- **Security**: helmet, express-rate-limit, cors
+This document provides a comprehensive guide to the E-Commerce Backend API. It includes detailed instructions on authentication, product management (with variants), and order processing.
 
 ---
 
-## 🚀 Getting Started
+## 📋 Table of Contents
+1. [Authentication](#-authentication-user)
+2. [Categories](#-categories-category)
+3. [Products](#-products-product)
+   - [Variant System Guide](#-variant-system-guide)
+4. [Orders](#-orders-order)
+5. [Common Responses & Security](#-common-responses--security)
 
-### 1. Install Dependencies
-```bash
-npm install
-```
+## 🚀 How to Test in Postman
 
-### 2. Environment Setup
-Your `.env` file is already configured:
-```
-MONGO_URI=mongodb+srv://admin:hellodhruv@votingapp.fle2nxm.mongodb.net/shopping
-JWT_SECRET=replace_with_a_secure_secret
-JWT_EXPIRES_IN=7d
-PORT=4000
-```
+To test the complex parts of this API (like variants and photos), follow these specific Postman setups:
 
-### 3. Start the Server
-```bash
-node server.js
-```
-Server will run on: `http://localhost:4000`
+### 1. **Sign Up (New User)**
+- **Tab**: `Body` -> `form-data`
+- **Keys**:
+  - `name`: `John Doe`
+  - `email`: `john@example.com`
+  - `password`: `john123`
+  - `role`: `admin` (Use admin to test product creation)
+  - `image`: [Select a file from your computer]
 
----
+### 2. **Create Product with Variants (The Hard Part)**
+This uses the prefix system to group data and photos.
+- **Headers**: `Authorization: Bearer <your_token>`
+- **Tab**: `Body` -> `form-data`
+- **Setup**:
+| Key | Value | Type |
+| :--- | :--- | :--- |
+| `hasVariant` | `Yes` | Text |
+| `name` | `Nike Runner` | Text |
+| `brand` | `Nike` | Text |
+| `category` | `[Your_Category_ID]` | Text |
+| **--- Variant 1 ---** | | |
+| `V1_color` | `Blue` | Text |
+| `V1_price` | `2500` | Text |
+| `V1_stock` | `10` | Text |
+| `V1_images` | `[Select Blue Shoe Photo]` | **File** |
+| **--- Variant 2 ---** | | |
+| `V2_color` | `Red` | Text |
+| `V2_price` | `2600` | Text |
+| `V2_stock` | `5` | Text |
+| `V2_images` | `[Select Red Shoe Photo]` | **File** |
 
-## 📚 API Endpoints
+> [!NOTE]
+> Postman allows multiple files for the same key. If you want 3 photos for the Blue variant, just add `V1_images` three times and select different files.
 
-### 🔐 **User Authentication** (`/user`)
-
-#### 1. **Sign Up**
-- **POST** `/user/signup`
+### 3. **Place an Order**
+- **Headers**: `Authorization: Bearer <token>`
+- **Tab**: `Body` -> `raw` (Select `JSON`)
 - **Body**:
 ```json
 {
-  "name": "John Doe",
-  "email": "john@example.com",
-  "password": "securePassword123",
-  "role": "user"  // or "admin"
-}
-```
-- **Response**:
-```json
-{
-  "response": {
-    "_id": "...",
-    "name": "John Doe",
-    "email": "john@example.com",
-    "role": "user"
+  "paymentMethod": "COD",
+  "shippingAddress": {
+    "street": "123 Street",
+    "city": "Mumbai",
+    "state": "MH",
+    "zip": "400001",
+    "phone": "9999999999"
   },
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-}
-```
-
-#### 2. **Login**
-- **POST** `/user/login`
-- **Body**:
-```json
-{
-  "email": "john@example.com",
-  "password": "securePassword123"
-}
-```
-- **Response**:
-```json
-{
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-}
-```
-
----
-
-### 🛍️ **Products** (`/product`)
-
-#### 1. **Get All Products**
-- **GET** `/product`
-- **Auth**: Not required
-- **Response**:
-```json
-[
-  {
-    "_id": "...",
-    "title": "Product Name",
-    "description": "Product description",
-    "price": 99.99,
-    "stock": 50,
-    "reviews": [],
-    "createdAt": "2024-01-01T00:00:00.000Z"
-  }
-]
-```
-
-#### 2. **Get Single Product**
-- **GET** `/product/:id`
-- **Auth**: Not required
-- **Response**:
-```json
-{
-  "_id": "...",
-  "title": "Product Name",
-  "description": "Product description",
-  "price": 99.99,
-  "stock": 50,
-  "reviews": [
+  "orderItems": [
     {
-      "user": {
-        "_id": "...",
-        "name": "John Doe"
-      },
-      "rating": 5,
-      "comment": "Great product!",
-      "createdAt": "2024-01-01T00:00:00.000Z"
+      "product": "PARENT_PRODUCT_ID",
+      "variant": "SPECIFIC_VARIANT_ID", // If no variant, use same as PARENT_PRODUCT_ID
+      "quantity": 1
     }
-  ],
-  "createdAt": "2024-01-01T00:00:00.000Z"
+  ]
 }
 ```
 
-#### 3. **Create Product** (Admin Only)
-- **POST** `/product`
-- **Auth**: Required (Admin role)
-- **Headers**:
-```
-Authorization: Bearer <your_jwt_token>
-```
-- **Body**:
-```json
-{
-  "title": "New Product",
-  "description": "Product description",
-  "price": 99.99,
-  "stock": 100
-}
-```
-- **Response**:
-```json
-{
-  "_id": "...",
-  "title": "New Product",
-  "description": "Product description",
-  "price": 99.99,
-  "stock": 100,
-  "reviews": [],
-  "createdAt": "2024-01-01T00:00:00.000Z"
-}
-```
+> [!IMPORTANT]
+> **How IDs work**:
+> - If product has **NO variants**: Both `product` and `variant` should be the same ID.
+> - If product **HAS variants**: `product` is the main ID, and `variant` is the `_id` found inside the `variants` array.
 
 ---
 
-### 🛒 **Orders** (`/order`)
+## 🔐 Authentication (`/user`)
 
-#### 1. **Generate Purchase Token**
-- **POST** `/order/token/:productId`
-- **Auth**: Required 
-```
-Authorization: Bearer <your_jwt_token>
-```
-- **Response**:
-```json
-{
-  "token": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "expiresAt": "2024-01-01T00:05:00.000Z"
-}
-```
-- **Note**: Token is valid for 5 minutes only
-
-#### 2. **Create Order (Purchase)**
-- **POST** `/order`
-- **Auth**: Required
-- **Headers**:
-```
-Authorization: Bearer <your_jwt_token>
-```
+### 1. **User Sign Up**
+Create a new user account with an optional profile image.
+- **Method**: `POST`
+- **Path**: `/user/signup`
+- **Content-Type**: `multipart/form-data`
 - **Body**:
-```json
-{
-  "token": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "quantity": 2
-}
-```
-- **Response**:
-```json
-{
-  "message": "Order created successfully",
-  "order": {
-    "_id": "...",
-    "user": "...",
-    "items": [
-      {
-        "product": "...",
-        "quantity": 2
-      }
-    ],
-    "total": 199.98,
-    "status": "created",
-    "createdAt": "2024-01-01T00:00:00.000Z"
-  }
-}
-```
+  - `name`: String (Required)
+  - `email`: String (Required, Unique)
+  - `password`: String (Required)
+  - `role`: String (Optional: `user` or `admin`. Default: `user`)
+  - `image`: File (Optional - Profile picture)
 
-#### 3. **Get All Orders** (Admin Only)
-- **GET** `/order/all`
-- **Auth**: Required (Admin role)
-- **Headers**:
-```
-Authorization: Bearer <your_jwt_token>
-```
-- **Response**:
-```json
-[
+### 2. **User Login**
+Authenticate and receive a JWT token.
+- **Method**: `POST`
+- **Path**: `/user/login`
+- **Content-Type**: `application/json`
+- **Body**:
+  ```json
   {
-    "_id": "...",
-    "user": {
-      "_id": "...",
-      "name": "John Doe",
-      "email": "john@example.com"
-    },
-    "items": [
-      {
-        "product": {
-          "_id": "...",
-          "title": "Product Name",
-          "price": 99.99
-        },
-        "quantity": 2
-      }
-    ],
-    "total": 199.98,
-    "status": "created",
-    "createdAt": "2024-01-01T00:00:00.000Z"
+    "email": "user@example.com",
+    "password": "yourPassword123"
   }
-]
-```
+  ```
+- **Response**: Returns a Bearer Token for protected routes.
 
 ---
 
-## 🔑 Authentication Flow
+## 📁 Categories (`/category`)
 
-### How to Use JWT Tokens
+### 1. **Get All Categories**
+- **Method**: `GET`
+- **Path**: `/category`
 
-1. **Sign up or Login** to get a JWT token
-2. **Include the token** in all protected routes:
-   ```
-   Authorization: Bearer <your_token_here>
-   ```
-
-### Example with cURL:
-```bash
-# Login
-curl -X POST http://localhost:4000/user/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"john@example.com","password":"securePassword123"}'
-
-# Use token in protected route
-curl -X POST http://localhost:4000/product \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
-  -d '{"title":"New Product","price":99.99,"stock":100}'
-```
-
-### Example with Postman:
-1. Go to **Authorization** tab
-2. Select **Type**: Bearer Token
-3. Paste your JWT token in the **Token** field
+### 2. **Create Category** (Admin Only)
+- **Method**: `POST`
+- **Path**: `/category`
+- **Headers**: `Authorization: Bearer <token>`
+- **Body** (form-data): `name`, `slug`, `image` (File)
 
 ---
 
-## 🔒 Security Features
+## 🛍️ Products (`/product`)
 
-### 1. **Two-Step Purchase Process**
-This backend uses a secure two-step purchase flow to prevent race conditions and double-spending:
+### 1. **Get All Products**
+- **Method**: `GET`
+- **Path**: `/product`
+- **Note**: Use this for full product data.
 
-**Step 1**: Generate a one-time purchase token
-```bash
-POST /order/token/:productId
-```
+### 2. **Get Product Thumbnails** (Recommended for Listings)
+Lightweight response containing only essential data for grid views.
+- **Method**: `GET`
+- **Path**: `/product/thumbnail`
+- **Fields**: `_id`, `name`, `brand`, `images`, `price`, `discountPrice`
 
-**Step 2**: Use the token to complete the purchase
-```bash
-POST /order
-Body: { "token": "...", "quantity": 2 }
-```
+### 3. **Create Product** (Admin Only)
+Supports a high-level **Variant System** using pure Form-Data.
+- **Method**: `POST`
+- **Path**: `/product`
+- **Headers**: `Authorization: Bearer <token>`
+- **Content-Type**: `multipart/form-data`
 
-**Why?** This ensures:
-- ✅ Stock is checked before purchase
-- ✅ Tokens expire after 5 minutes
-- ✅ Tokens can only be used once
-- ✅ Prevents concurrent purchase conflicts
-
-### 2. **Role-Based Access Control**
-- **User role**: Can browse products, create orders
-- **Admin role**: Can create products, view all orders
-
-### 3. **Password Security**
-- Passwords are hashed using bcrypt with salt rounds
-- Plain text passwords are never stored
-
----
-
-## 📊 Database Models
-
-### User Model
-```javascript
-{
-  name: String (required),
-  email: String (required, unique, lowercase),
-  password: String (required, hashed),
-  role: String (enum: ['user', 'admin'], default: 'user')
-}
-```
-
-### Product Model
-```javascript
-{
-  title: String (required),
-  description: String,
-  price: Number (required),
-  stock: Number (default: 0),
-  reviews: [{
-    user: ObjectId (ref: User),
-    rating: Number (1-5),
-    comment: String,
-    createdAt: Date
-  }],
-  createdAt: Date
-}
-```
-
-### Order Model
-```javascript
-{
-  user: ObjectId (ref: User),
-  items: [{
-    product: ObjectId (ref: Product),
-    quantity: Number (min: 1)
-  }],
-  total: Number (required),
-  status: String (enum: ['created', 'paid', 'shipped', 'cancelled']),
-  createdAt: Date
-}
-```
-
-### OneTimeAction Model
-```javascript
-{
-  user: ObjectId (ref: User),
-  actionType: String ('purchase'),
-  product: ObjectId (ref: Product),
-  token: String (UUID),
-  used: Boolean (default: false),
-  expiresAt: Date
-}
-```
+#### **Standard Fields**:
+| Key | Type | Description |
+| :--- | :--- | :--- |
+| `hasVariant` | String | `Yes` or `No`. If `No`, uses the following global fields. |
+| `name` | String | Product name. |
+| `description` | String | Detailed description. |
+| `brand` | String | Brand name. |
+| `category` | ObjectId | Category ID. |
+| `price` | Number | Global price. |
+| `discountPrice`| Number | Global discounted price. |
+| `stock` | Number | Global stock. |
+| `images` | Files | Global product photos. |
 
 ---
 
-## 🧪 Testing the API
+### 🎨 Variant System Guide
 
-### Complete Purchase Flow Example:
+If `hasVariant` is set to **`Yes`**, you can define multiple variants (e.g., Color/Size) with their own prices and photos. Use prefixes `V1_`, `V2_`, etc.
 
-```bash
-# 1. Create an admin user
-curl -X POST http://localhost:4000/user/signup \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Admin User",
-    "email": "admin@example.com",
-    "password": "admin123",
-    "role": "admin"
-  }'
+> [!TIP]
+> **Auto-Sync Feature**: When `hasVariant` is `Yes`, the server automatically copies **Variant 1 (V1)** data to the global fields. This ensures your "Thumbnail" view always shows a valid price and image without manual entry.
 
-# Save the token from response
-
-# 2. Create a product (as admin)
-curl -X POST http://localhost:4000/product \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <admin_token>" \
-  -d '{
-    "title": "iPhone 15",
-    "description": "Latest iPhone",
-    "price": 999.99,
-    "stock": 50
-  }'
-
-# Save the product _id from response
-
-# 3. Create a regular user
-curl -X POST http://localhost:4000/user/signup \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "John Doe",
-    "email": "john@example.com",
-    "password": "user123",
-    "role": "user"
-  }'
-
-# Save the user token
-
-# 4. Generate purchase token
-curl -X POST http://localhost:4000/order/token/<product_id> \
-  -H "Authorization: Bearer <user_token>"
-
-# Save the purchase token
-
-# 5. Complete the purchase
-curl -X POST http://localhost:4000/order \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <user_token>" \
-  -d '{
-    "token": "<purchase_token>",
-    "quantity": 1
-  }'
-
-# 6. View all orders (as admin)
-curl -X GET http://localhost:4000/order/all \
-  -H "Authorization: Bearer <admin_token>"
-```
+#### **Variant Fields Example (V1)**:
+- `V1_color`: "Midnight Blue"
+- `V1_size`: "Large"
+- `V1_price`: 1500
+- `V1_discountPrice`: 1200
+- `V1_stock`: 50
+- `V1_images`: [File1, File2] (Upload photos specific to this color)
 
 ---
 
-## ⚠️ Common Errors
+## 🛒 Orders (`/order`)
 
-### 401 Unauthorized
-- **Cause**: Missing or invalid JWT token
-- **Solution**: Include valid token in Authorization header
+### 1. **Place an Order**
+Purchase one or more products. Supports specific variant selection.
+- **Method**: `POST`
+- **Path**: `/order`
+- **Body** (application/json):
+  ```json
+  {
+    "paymentMethod": "COD", // or "Online"
+    "shippingAddress": {
+      "street": "123 Main St",
+      "city": "Mumbai",
+      "state": "MH",
+      "zip": "400001",
+      "phone": "9876543210"
+    },
+    "orderItems": [
+      {
+        "product": "PARENT_PRODUCT_ID",
+        "color": "Midnight Blue", // Optional: matches specific variant
+        "size": "Large",          // Optional: matches specific variant
+        "quantity": 1
+      }
+    ]
+  }
+  ```
 
-### 403 Forbidden
-- **Cause**: User doesn't have required role (e.g., trying to create product as non-admin)
-- **Solution**: Use admin account for admin-only routes
+### 2. **Payment Verification** (Online Orders)
+Used after a successful Razorpay transaction.
+- **Method**: `POST`
+- **Path**: `/order/verify-payment`
+- **Body**: `razorpay_order_id`, `razorpay_payment_id`, `razorpay_signature`
 
-### 400 Bad Request (Token errors)
-- **Cause**: 
-  - "Invalid or already used token" - Token was already used
-  - "Token expired" - Token is older than 5 minutes
-- **Solution**: Generate a new purchase token
-
-### 400 Bad Request (Stock)
-- **Cause**: "Not enough stock"
-- **Solution**: Check product stock before purchase
-
----
-
-## 🎯 Quick Start Checklist
-
-- [ ] Install dependencies: `npm install`
-- [ ] Verify `.env` file exists with correct values
-- [ ] Start server: `node server.js`
-- [ ] Create an admin user via `/user/signup`
-- [ ] Create products via `/product` (as admin)
-- [ ] Create a regular user
-- [ ] Test purchase flow with token generation
-
----
-
-## 📝 Notes
-
-- JWT tokens don't expire by default (you may want to add expiration)
-- Purchase tokens expire after 5 minutes
-- Stock is automatically decremented after successful purchase
-- All passwords are automatically hashed before saving
-- The database connection is to MongoDB Atlas
+### 3. **My Orders**
+- **Method**: `GET`
+- **Path**: `/order/myorders`
 
 ---
 
-## 🔧 Recommended Improvements
+## 🔒 Common Responses & Security
 
-1. Add JWT token expiration handling
-2. Add input validation middleware
-3. Add rate limiting to prevent abuse
-4. Add order status update endpoints
-5. Add product review endpoints
-6. Add pagination for product listings
-7. Add search and filter functionality
-8. Add password reset functionality
-9. Add email notifications for orders
-10. Add proper error handling middleware
+- **401 Unauthorized**: JWT token is missing or expired.
+- **403 Forbidden**: You are trying to access an Admin route with a User account.
+- **Stock Validation**: Orders will fail with a `400` error if stock for the selected variant is insufficient.
+- **Secure ID Tracking**: Orders automatically track both the `product ID` and the specific `variant ID` bought, ensuring accurate inventory management.
 
 ---
 

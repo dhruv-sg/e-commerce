@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const ProductSchema = new mongoose.Schema({
+    hasVariant: {
+        type: String,
+        enum: ['Yes', 'No'],
+        default: 'No'
+    },
     name: {
         type: String,
         required: true,
@@ -30,7 +35,16 @@ const ProductSchema = new mongoose.Schema({
     images: [
         {
             type: String,
-            // required: true
+        }
+    ],
+    variants: [
+        {
+            color: String,
+            size: String,
+            price: Number,
+            discountPrice: Number,
+            stock: Number,
+            images: [String]
         }
     ],
     stock: {
