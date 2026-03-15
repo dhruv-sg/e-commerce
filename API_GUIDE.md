@@ -137,8 +137,58 @@ Lightweight response containing only essential data for grid views.
 - **Method**: `GET`
 - **Path**: `/product/thumbnail`
 - **Fields**: `_id`, `name`, `brand`, `images`, `price`, `discountPrice`
+- **Response**:
+```json
+[
+  {
+    "_id": "...",
+    "name": "Product Name",
+    "brand": "Nike",
+    "images": ["url1", "url2"],
+    "price": 2000,
+    "discountPrice": 1800
+  }
+]
+```
 
-### 3. **Create Product** (Admin Only)
+---
+
+## 👑 Admin Endpoints (`/admin`)
+
+### 1. **Get Dashboard Stats**
+Returns a complete overview of products, orders, revenue, and alerts.
+- **Method**: `GET`
+- **Path**: `/admin/dashboard`
+- **Headers**: `Authorization: Bearer <admin_token>`
+
+### 2. **Get All Customers**
+Returns a list of all users with `role: user` and their total order count.
+- **Method**: `GET`
+- **Path**: `/admin/customers`
+- **Headers**: `Authorization: Bearer <admin_token>`
+- **Response**:
+  ```json
+  [
+    {
+      "_id": "...",
+      "name": "Customer Name",
+      "email": "customer@example.com",
+      "image": "url_to_profile_pic",
+      "role": "user",
+      "orderCount": 5,
+      "createdAt": "2024-01-01T00:00:00.000Z"
+    }
+  ]
+  ```
+
+### 3. **Get Customer Orders**
+Returns all orders placed by a specific user.
+- **Method**: `GET`
+- **Path**: `/admin/customer-orders/:userId`
+- **Headers**: `Authorization: Bearer <admin_token>`
+- **Response**: Returns an array of order objects.
+
+### 4. **Create Product** (Admin Only)
 Supports a high-level **Variant System** using pure Form-Data.
 - **Method**: `POST`
 - **Path**: `/product`

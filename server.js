@@ -27,6 +27,9 @@ app.use("/order", orderRoute)
 const categoryRoute = require('./routes/categoryRoute')
 app.use("/api/categories", categoryRoute)
 
+const adminRoute = require('./routes/adminRoute')
+app.use("/admin", adminRoute)
+
 
 
 app.listen(PORT, (req, res) => {

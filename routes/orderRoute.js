@@ -212,6 +212,11 @@ router.get('/admin/all', authMiddleware, adminOnly, async (req, res) => {
 // Get order by ID
 router.get('/:id', authMiddleware, async (req, res) => {
   try {
+    const mongoose = require('mongoose');
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid order ID' });
+    }
+
     const order = await Order.findById(req.params.id).populate('user', 'name email');
     if (!order) return res.status(404).json({ error: 'Order not found' });
 
@@ -227,13 +232,22 @@ router.get('/:id', authMiddleware, async (req, res) => {
 });
 
 // Admin: Update order status
-router.put('/:id/status', authMiddleware, adminOnly, async (req, res) => {
+router.put('/status', authMiddleware, adminOnly, async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id);
+    const { orderId, status, paymentStatus } = req.body;
+
+    if (!orderId) return res.status(400).json({ error: 'orderId is required in body' });
+
+    const mongoose = require('mongoose');
+    if (!mongoose.isValidObjectId(orderId)) {
+      return res.status(400).json({ error: 'Invalid orderId' });
+    }
+
+    const order = await Order.findById(orderId);
     if (!order) return res.status(404).json({ error: 'Order not found' });
 
-    order.status = req.body.status || order.status;
-    if (req.body.paymentStatus) order.paymentStatus = req.body.paymentStatus;
+    if (status) order.status = status;
+    if (paymentStatus) order.paymentStatus = paymentStatus;
 
     await order.save();
     res.json(order);
