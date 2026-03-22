@@ -123,6 +123,13 @@ Authenticate and receive a JWT token.
 - **Headers**: `Authorization: Bearer <token>`
 - **Body** (form-data): `name`, `slug`, `image` (File)
 
+### 3. **Update Category** (Admin Only)
+Modify an existing category. Pass the `id` in the body.
+- **Method**: `PUT`
+- **Path**: `/api/categories/update`
+- **Headers**: `Authorization: Bearer <token>`
+- **Body** (form-data): `id` (Required), `name`, `slug`, `image` (File)
+
 ---
 
 ## 🛍️ Products (`/product`)
@@ -133,22 +140,23 @@ Authenticate and receive a JWT token.
 - **Note**: Use this for full product data.
 
 ### 2. **Get Product Thumbnails** (Recommended for Listings)
-Lightweight response containing only essential data for grid views.
+Lightweight response supporting pagination, sorting, and category filtering.
 - **Method**: `GET`
 - **Path**: `/product/thumbnail`
+- **Options (Query Params)**:
+  - `page`: Number (Default: 1)
+  - `limit`: Number (Default: 10)
+  - `category`: Category ID (Filter by category)
+  - `sort`: `lowToHigh`, `highToLow`, or `newArrivals`
 - **Fields**: `_id`, `name`, `brand`, `images`, `price`, `discountPrice`
 - **Response**:
 ```json
-[
-  {
-    "_id": "...",
-    "name": "Product Name",
-    "brand": "Nike",
-    "images": ["url1", "url2"],
-    "price": 2000,
-    "discountPrice": 1800
-  }
-]
+{
+  "products": [...],
+  "total": 50,
+  "page": 1,
+  "limit": 10
+}
 ```
 
 ### 3. **Get Trending Products** (Trending Thumbnails)
@@ -162,6 +170,12 @@ Returns the top 10 most sold products in the lightweight thumbnail format.
 - **GET** `/product/thumbnail/wishlist`: Returns lightweight thumbnails of items in your wishlist. (Auth required)
 - **POST** `/product/wishlist/:id`: Adds a product to your wishlist by ID. (Auth required)
 - **GET** `/product/wishlist/remove/:id`: Removes a product from your wishlist by ID. (Auth required)
+
+### 5. **Similar Products (You may also like)**
+Fetch products from the same category to show as recommendations on the product detail page.
+- **Method**: `GET`
+- **Path**: `/product/similar/:id`
+- **Response**: Returns an array of up to 8 similar product thumbnails.
 
 ---
 

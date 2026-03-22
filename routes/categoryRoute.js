@@ -47,4 +47,32 @@ router.get('/:slug', async (req, res) => {
     }
 });
 
+// Update category (Admin only)
+router.put('/update', authMiddleware, adminOnly, upload.single('image'), async (req, res) => {
+    try {
+        const { id, name, slug } = req.body;
+        if (!id) return res.status(400).json({ error: "Category ID (id) is required in body" });
+
+        const mongoose = require('mongoose');
+        if (!mongoose.isValidObjectId(id)) {
+            return res.status(400).json({ error: "Invalid category ID" });
+        }
+
+        const category = await Category.findById(id);
+        if (!category) return res.status(404).json({ error: "Category not found" });
+
+        if (name) category.name = name;
+        if (slug) category.slug = slug;
+        if (req.file) category.image = req.file.path;
+
+        await category.save();
+        res.json(category);
+        console.log("Category updated");
+    } catch (err) {
+        console.error(err);
+        res.status(400).json({ error: err.message });
+    }
+});
+
+
 module.exports = router;
