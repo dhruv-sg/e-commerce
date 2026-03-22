@@ -24,7 +24,13 @@ const userSchema = new mongoose.Schema({
     image: {
         type: String,
         default: ''
-    }
+    },
+    wishlist: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Product'
+        }
+    ]
 })
 
 userSchema.pre('save', async function (next) {

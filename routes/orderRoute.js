@@ -209,6 +209,25 @@ router.get('/admin/all', authMiddleware, adminOnly, async (req, res) => {
   }
 });
 
+// Get single order for logged in user
+router.get('/myorders/:id', authMiddleware, async (req, res) => {
+  try {
+    const mongoose = require('mongoose');
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid order ID' });
+    }
+
+    const order = await Order.findOne({ _id: req.params.id, user: req.user.id });
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+
+    res.json(order);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
 // Get order by ID
 router.get('/:id', authMiddleware, async (req, res) => {
   try {

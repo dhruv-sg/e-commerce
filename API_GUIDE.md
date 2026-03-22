@@ -151,6 +151,18 @@ Lightweight response containing only essential data for grid views.
 ]
 ```
 
+### 3. **Get Trending Products** (Trending Thumbnails)
+Returns the top 10 most sold products in the lightweight thumbnail format.
+- **Method**: `GET`
+- **Path**: `/product/thumbnail/trending`
+- **Auth**: Not required
+- **Response**: Same format as `/thumbnail`, but sorted by sales quantity with an extra `totalSold` field.
+
+### 4. **Wishlist Management**
+- **GET** `/product/thumbnail/wishlist`: Returns lightweight thumbnails of items in your wishlist. (Auth required)
+- **POST** `/product/wishlist/:id`: Adds a product to your wishlist by ID. (Auth required)
+- **GET** `/product/wishlist/remove/:id`: Removes a product from your wishlist by ID. (Auth required)
+
 ---
 
 ## 👑 Admin Endpoints (`/admin`)
@@ -264,6 +276,14 @@ Used after a successful Razorpay transaction.
 ### 3. **My Orders**
 - **Method**: `GET`
 - **Path**: `/order/myorders`
+- **Auth**: Required
+
+### 4. **Get Single Order Detail** (Customer)
+Fetch the full details of a specific order you placed.
+- **Method**: `GET`
+- **Path**: `/order/myorders/:id`
+- **Auth**: Required
+- **Response**: Returns the order object.
 
 ---
 

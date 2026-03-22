@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { generateJWT, generateOneTimeToken, adminOnly, authMiddleware } = require('../auth')
 const Product = require('../models/productModel');
+const Order = require('../models/orderModel');
+const User = require('../models/userModel');
 const { upload } = require('../config/cloudinary');
 
 router.post('/', authMiddleware, adminOnly, upload.any(), async (req, res) => {
@@ -108,6 +110,48 @@ router.get('/list', async (req, res) => {
 });
 
 
+// GET /thumbnail/trending - returning most sold products as thumbnails
+router.get('/thumbnail/trending', async (req, res) => {
+  try {
+    const trendingProducts = await Order.aggregate([
+      { $unwind: "$items" },
+      {
+        $group: {
+          _id: "$items.product",
+          totalSold: { $sum: "$items.quantity" }
+        }
+      },
+      { $sort: { totalSold: -1 } },
+      { $limit: 10 },
+      {
+        $lookup: {
+          from: "products",
+          localField: "_id",
+          foreignField: "_id",
+          as: "productDetails"
+        }
+      },
+      { $unwind: "$productDetails" },
+      {
+        $project: {
+          _id: "$productDetails._id",
+          name: "$productDetails.name",
+          brand: "$productDetails.brand",
+          images: "$productDetails.images",
+          price: "$productDetails.price",
+          discountPrice: "$productDetails.discountPrice",
+          totalSold: 1
+        }
+      }
+    ]);
+    res.json(trendingProducts);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
 // GET /thumbnail - returning only name, brand, images, price, and discountPrice
 router.get('/thumbnail', async (req, res) => {
   try {
@@ -115,6 +159,59 @@ router.get('/thumbnail', async (req, res) => {
       .select('name brand images price discountPrice')
       .lean();
     res.json(products);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
+// GET /thumbnail/wishlist - returning thumbnails of wishlisted products
+router.get('/thumbnail/wishlist', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).populate('wishlist', 'name brand images price discountPrice');
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    res.json(user.wishlist);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
+// POST /wishlist/:id - Add to wishlist
+router.post('/wishlist/:id', authMiddleware, async (req, res) => {
+  try {
+    const productId = req.params.id;
+    const mongoose = require('mongoose');
+    if (!mongoose.isValidObjectId(productId)) {
+      return res.status(400).json({ error: 'Invalid Product ID' });
+    }
+
+    const product = await Product.findById(productId);
+    if (!product) return res.status(404).json({ error: 'Product not found' });
+
+    await User.findByIdAndUpdate(req.user.id, { $addToSet: { wishlist: productId } });
+    res.json({ success: true, message: 'Added to wishlist' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
+// DELETE /wishlist/:id - Remove from wishlist
+router.get('/wishlist/remove/:id', authMiddleware, async (req, res) => {
+  try {
+    const productId = req.params.id;
+    const mongoose = require('mongoose');
+    if (!mongoose.isValidObjectId(productId)) {
+      return res.status(400).json({ error: 'Invalid Product ID' });
+    }
+
+    await User.findByIdAndUpdate(req.user.id, { $pull: { wishlist: productId } });
+    res.json({ success: true, message: 'Removed from wishlist' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
