@@ -35,5 +35,4 @@ const adminOnly = (req, res, next) => {
   next();
 };
 
-module.exports = {authMiddleware,generateJWT,adminOnly}
-exports.generateOneTimeToken = () => uuidv4();
+module.exports = { authMiddleware, generateJWT, adminOnly, generateOneTimeToken: () => uuidv4() }

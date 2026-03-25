@@ -54,14 +54,101 @@ router.post('/login', async (req, res) => {
         res.json({ token })
 
 
+        res.json({ token })
+
+
     } catch (error) {
         console.log(error);
 
     }
 })
 
+// --- ADDRESS ROUTES ---
 
+/**
+ * @route   GET /user/address
+ * @desc    Get all addresses of the logged-in user
+ */
+router.get('/address', authMiddleware, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id).select('addresses');
+        if (!user) return res.status(404).json({ error: "User not found" });
+        res.json(user.addresses);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 
+/**
+ * @route   POST /user/address
+ * @desc    Add a new address for the logged-in user
+ */
+router.post('/address', authMiddleware, upload.none(), async (req, res) => {
+    try {
+        const { street, city, state, zip, phone } = req.body;
+
+        // Basic validation
+        if (!street || !city || !state || !zip || !phone) {
+            return res.status(400).json({ error: "All address fields are required" });
+        }
+
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ error: "User not found" });
+
+        const newAddress = { street, city, state, zip, phone };
+        user.addresses.push(newAddress);
+        await user.save();
+
+        res.status(201).json({ message: "Address added successfully", addresses: user.addresses });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * @route   PUT /user/address/:id
+ * @desc    Update an existing address for the logged-in user
+ */
+router.put('/address/:id', authMiddleware, upload.none(), async (req, res) => {
+    try {
+        const { street, city, state, zip, phone } = req.body;
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ error: "User not found" });
+
+        const address = user.addresses.id(req.params.id);
+        if (!address) return res.status(404).json({ error: "Address not found" });
+
+        // Update fields if provided
+        if (street) address.street = street;
+        if (city) address.city = city;
+        if (state) address.state = state;
+        if (zip) address.zip = zip;
+        if (phone) address.phone = phone;
+
+        await user.save();
+        res.json({ message: "Address updated successfully", addresses: user.addresses });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * @route   DELETE /user/address/:id
+ * @desc    Delete an address from the logged-in user's list
+ */
+router.delete('/address/:id', authMiddleware, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ error: "User not found" });
+
+        user.addresses.pull({ _id: req.params.id });
+        await user.save();
+
+        res.json({ message: "Address deleted successfully", addresses: user.addresses });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 
 module.exports = router
 

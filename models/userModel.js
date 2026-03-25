@@ -30,7 +30,14 @@ const userSchema = new mongoose.Schema({
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Product'
         }
-    ]
+    ],
+    addresses: [{
+        street: { type: String, required: true },
+        city: { type: String, required: true },
+        state: { type: String, required: true },
+        zip: { type: String, required: true },
+        phone: { type: String, required: true }
+    }]
 })
 
 userSchema.pre('save', async function (next) {

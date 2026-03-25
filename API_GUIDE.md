@@ -109,7 +109,32 @@ Authenticate and receive a JWT token.
   ```
 - **Response**: Returns a Bearer Token for protected routes.
 
+
+### 3. **Manage Addresses**
+Add or fetch stored addresses to use during ordering.
+- **Get Addresses**:
+  - **Method**: `GET`
+  - **Path**: `/user/address`
+  - **Auth**: Required
+- **Add Address**:
+  - **Method**: `POST`
+  - **Path**: `/user/address`
+  - **Auth**: Required
+  - **Content-Type**: `multipart/form-data`
+  - **Body** (form-data): `street`, `city`, `state`, `zip`, `phone`
+- **Update Address**:
+  - **Method**: `PUT`
+  - **Path**: `/user/address/:id`
+  - **Auth**: Required
+  - **Content-Type**: `multipart/form-data`
+  - **Body** (form-data): Any field above to update.
+- **Delete Address**:
+  - **Method**: `DELETE`
+  - **Path**: `/user/address/:id`
+  - **Auth**: Required
+
 ---
+
 
 ## 📁 Categories (`/category`)
 
