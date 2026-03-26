@@ -116,10 +116,13 @@ router.post('/', authMiddleware, async (req, res) => {
 
     const createdOrder = await order.save();
 
-    // Send confirmation email for COD (Non-blocking background task)
+    // Send confirmation email for COD
     if (paymentMethod === 'COD') {
-      sendEmail(req.user.email, 'Order Confirmed! 🎉 - Yogi Fashion', orderConfirmationTemplate(createdOrder))
-        .catch(emailErr => console.error("Background Email Error (COD Confirmation):", emailErr));
+      try {
+        await sendEmail(req.user.email, 'Order Confirmed! 🎉 - Yogi Fashion', orderConfirmationTemplate(createdOrder));
+      } catch (emailErr) {
+        console.error("Failed to send COD confirmation email:", emailErr);
+      }
     }
 
     // 2. Only update stock for COD immediately.
@@ -169,9 +172,13 @@ router.post('/verify-payment', authMiddleware, async (req, res) => {
       order.status = 'Processing';
       await order.save();
 
-      // Send confirmation email after payment verified (Non-blocking background task)
-      sendEmail(req.user.email, 'Payment Received & Order Confirmed! 🎉 - Yogi Fashion', orderConfirmationTemplate(order))
-        .catch(emailErr => console.error("Background Email Error (Online Confirmation):", emailErr));
+      // Send confirmation email after payment verified
+      try {
+        // Need to ensure req.user.email is available or fetch it
+        await sendEmail(req.user.email, 'Payment Received & Order Confirmed! 🎉 - Yogi Fashion', orderConfirmationTemplate(order));
+      } catch (emailErr) {
+        console.error("Failed to send Online confirmation email:", emailErr);
+      }
 
       // 3. Update stock after successful payment
       for (const item of order.items) {
@@ -282,10 +289,13 @@ router.put('/status', authMiddleware, adminOnly, async (req, res) => {
 
     await order.save();
 
-    // Send status update email (Non-blocking background task)
+    // Send status update email
     if (status) {
-      sendEmail(order.user.email, `Order Status Update: ${status} - Yogi Fashion`, orderStatusUpdateTemplate(order, status))
-        .catch(emailErr => console.error("Background Email Error (Status Update):", emailErr));
+      try {
+        await sendEmail(order.user.email, `Order Status Update: ${status} - Yogi Fashion`, orderStatusUpdateTemplate(order, status));
+      } catch (emailErr) {
+        console.error("Failed to send status update email:", emailErr);
+      }
     }
 
     res.json(order);
