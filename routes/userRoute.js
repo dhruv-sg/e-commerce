@@ -23,15 +23,15 @@ router.post('/signup', upload.single('image'), async (req, res) => {
         const token = generateJWT(payload);
 
         console.log(" Data saved");
-        res.status(200).json({ 
-            token, 
+        res.status(200).json({
+            token,
             user: {
                 id: response.id,
                 name: response.name,
                 email: response.email,
                 role: response.role,
                 image: response.image
-            } 
+            }
         });
 
 
@@ -60,8 +60,8 @@ router.post('/login', async (req, res) => {
         }
         const token = generateJWT(payload);
 
-        res.json({ 
-            token, 
+        res.json({
+            token,
             user: {
                 id: user.id,
                 name: user.name,
@@ -97,14 +97,14 @@ router.put('/profile', authMiddleware, upload.single('image'), async (req, res) 
 
         await user.save();
 
-        res.json({ 
-            message: "Profile updated successfully", 
-            user: { 
-                id: user.id, 
-                name: user.name, 
+        res.json({
+            message: "Profile updated successfully",
+            user: {
+                id: user.id,
+                name: user.name,
                 email: user.email,
-                image: user.image 
-            } 
+                image: user.image
+            }
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -117,8 +117,8 @@ require('../config/passport');
 
 router.get('/google', passport.authenticate('google', { scope: ['email', 'profile'] }));
 
-router.get('/google/callback', 
-    passport.authenticate('google', { session: false }), 
+router.get('/google/callback',
+    passport.authenticate('google', { session: false }),
     (req, res) => {
         const payload = {
             id: req.user.id,
@@ -253,7 +253,8 @@ router.post('/forgot-password', async (req, res) => {
         const { sendEmail } = require('../utils/emailService');
         const { otpTemplate } = require('../utils/emailTemplates');
 
-        await sendEmail(email, 'Password Reset OTP - Yogi Fashion', otpTemplate(otp));
+        sendEmail(email, 'Password Reset OTP - Yogi Fashion', otpTemplate(otp))
+            .catch(err => console.error("Forgot password email failed in background:", err));
         
         res.json({ message: "OTP sent to your email successfully" });
 
@@ -272,8 +273,8 @@ router.post('/verify-otp', async (req, res) => {
         const { email, otp } = req.body;
         if (!email || !otp) return res.status(400).json({ error: "Email and OTP are required" });
 
-        const user = await User.findOne({ 
-            email, 
+        const user = await User.findOne({
+            email,
             resetOtp: otp,
             resetOtpExpiry: { $gt: Date.now() }
         });
@@ -298,8 +299,8 @@ router.post('/reset-password', async (req, res) => {
             return res.status(400).json({ error: "Email, OTP, and new password are required" });
         }
 
-        const user = await User.findOne({ 
-            email, 
+        const user = await User.findOne({
+            email,
             resetOtp: otp,
             resetOtpExpiry: { $gt: Date.now() }
         });
