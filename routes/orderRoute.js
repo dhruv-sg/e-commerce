@@ -5,6 +5,8 @@ const Product = require('../models/productModel');
 const { generateJWT, generateOneTimeToken, adminOnly, authMiddleware } = require('../auth')
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
+const { sendEmail } = require('../utils/emailService');
+const { orderConfirmationTemplate, orderStatusUpdateTemplate } = require('../utils/emailTemplates');
 
 const getRazorpayInstance = () => {
   const key_id = process.env.RAZORPAY_KEY_ID;
@@ -114,7 +116,16 @@ router.post('/', authMiddleware, async (req, res) => {
 
     const createdOrder = await order.save();
 
-    // 2. Only update stock for COD immediately. 
+    // Send confirmation email for COD
+    if (paymentMethod === 'COD') {
+      try {
+        await sendEmail(req.user.email, 'Order Confirmed! 🎉 - Yogi Fashion', orderConfirmationTemplate(createdOrder));
+      } catch (emailErr) {
+        console.error("Failed to send COD confirmation email:", emailErr);
+      }
+    }
+
+    // 2. Only update stock for COD immediately.
     // For Online, we update after successful payment verification.
     if (paymentMethod === 'COD') {
       for (const item of finalItems) {
@@ -160,6 +171,14 @@ router.post('/verify-payment', authMiddleware, async (req, res) => {
       order.paymentStatus = 'PAID';
       order.status = 'Processing';
       await order.save();
+
+      // Send confirmation email after payment verified
+      try {
+        // Need to ensure req.user.email is available or fetch it
+        await sendEmail(req.user.email, 'Payment Received & Order Confirmed! 🎉 - Yogi Fashion', orderConfirmationTemplate(order));
+      } catch (emailErr) {
+        console.error("Failed to send Online confirmation email:", emailErr);
+      }
 
       // 3. Update stock after successful payment
       for (const item of order.items) {
@@ -262,13 +281,23 @@ router.put('/status', authMiddleware, adminOnly, async (req, res) => {
       return res.status(400).json({ error: 'Invalid orderId' });
     }
 
-    const order = await Order.findById(orderId);
+    const order = await Order.findById(orderId).populate('user', 'email');
     if (!order) return res.status(404).json({ error: 'Order not found' });
 
     if (status) order.status = status;
     if (paymentStatus) order.paymentStatus = paymentStatus;
 
     await order.save();
+
+    // Send status update email
+    if (status) {
+      try {
+        await sendEmail(order.user.email, `Order Status Update: ${status} - Yogi Fashion`, orderStatusUpdateTemplate(order, status));
+      } catch (emailErr) {
+        console.error("Failed to send status update email:", emailErr);
+      }
+    }
+
     res.json(order);
   } catch (err) {
     console.error(err);

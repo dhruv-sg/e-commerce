@@ -94,6 +94,18 @@ Create a new user account with an optional profile image.
   - `password`: String (Required)
   - `role`: String (Optional: `user` or `admin`. Default: `user`)
   - `image`: File (Optional - Profile picture)
+- **Response**:
+  ```json
+  {
+    "token": "...",
+    "user": {
+      "name": "John Doe",
+      "email": "john@example.com",
+      "role": "user",
+      "image": "..."
+    }
+  }
+  ```
 
 ### 2. **User Login**
 Authenticate and receive a JWT token.
@@ -107,7 +119,39 @@ Authenticate and receive a JWT token.
     "password": "yourPassword123"
   }
   ```
-- **Response**: Returns a Bearer Token for protected routes.
+- **Response**:
+```json
+{
+  "token": "...",
+  "user": {
+    "name": "John Doe",
+    "email": "john@example.com",
+    "role": "user",
+    "image": "..."
+  }
+}
+```
+
+#### 3. **Update Profile**
+Change your basic information (e.g. name).
+- **Method**: `PUT`
+- **Path**: `/user/profile`
+- **Auth**: Required
+- **Content-Type**: `multipart/form-data`
+- **Body** (form-data): 
+  - `name`: Text (Optional)
+  - `image`: File (Optional - Profile picture)
+- **Response**:
+  ```json
+  {
+    "message": "Profile updated successfully",
+    "user": {
+      "name": "John Doe",
+      "email": "john@example.com",
+      "image": "..."
+    }
+  }
+  ```
 
 
 ### 3. **Manage Addresses**
@@ -133,8 +177,43 @@ Add or fetch stored addresses to use during ordering.
   - **Path**: `/user/address/:id`
   - **Auth**: Required
 
----
+#### 3. **Google Authentication**
+Streamlined login/signup using Google.
+- **Start Login**:
+  - **Method**: `GET`
+  - **Path**: `/user/google`
+  - **Action**: Redirects user to Google Consent screen.
+- **Callback Handler**:
+  - **Method**: `GET`
+  - **Path**: `/user/google/callback`
+  - **Note**: Redirects back to **`http://localhost:5173/auth/callback`** with the following URL parameters:
+    - `token`: The JWT authentication token.
+    - `user`: Stringified and URI-encoded user object.
 
+**Configuration Required (`.env`):**
+```
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+```
+
+#### 4. **Password Reset (OTP)**
+Secure recovery using email OTP.
+- **Request OTP**:
+  - **Method**: `POST`
+  - **Path**: `/user/forgot-password`
+  - **Body**: `{ "email": "..." }`
+- **Verify OTP**:
+  - **Method**: `POST`
+  - **Path**: `/user/verify-otp`
+  - **Body**: `{ "email": "...", "otp": "..." }`
+- **Reset Password**:
+  - **Method**: `POST`
+  - **Path**: `/user/reset-password`
+  - **Body**: `{ "email": "...", "otp": "...", "newPassword": "..." }`
+
+**Note**: OTP is valid for 10 minutes.
+
+---
 
 ## 📁 Categories (`/category`)
 

@@ -14,7 +14,12 @@ const userSchema = new mongoose.Schema({
     },
     password: {
         type: String,
-        required: true
+        required: function() { return !this.googleId }
+    },
+    googleId: {
+        type: String,
+        unique: true,
+        sparse: true
     },
     role: {
         type: String,
@@ -37,7 +42,15 @@ const userSchema = new mongoose.Schema({
         state: { type: String, required: true },
         zip: { type: String, required: true },
         phone: { type: String, required: true }
-    }]
+    }],
+    resetOtp: {
+        type: String,
+        default: null
+    },
+    resetOtpExpiry: {
+        type: Date,
+        default: null
+    }
 })
 
 userSchema.pre('save', async function (next) {

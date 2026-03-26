@@ -10,6 +10,9 @@ dotenv.config();
 app.use(cors());
 app.use(express.json());
 
+const passport = require('passport');
+app.use(passport.initialize());
+
 app.get('/', (req, res) => res.json({ ok: true, msg: 'Secure E-commerce API (NODEJS)' }));
 
 const PORT = process.env.PORT || 4000;

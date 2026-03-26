@@ -23,7 +23,16 @@ router.post('/signup', upload.single('image'), async (req, res) => {
         const token = generateJWT(payload);
 
         console.log(" Data saved");
-        res.status(200).json({ response, token });
+        res.status(200).json({ 
+            token, 
+            user: {
+                id: response.id,
+                name: response.name,
+                email: response.email,
+                role: response.role,
+                image: response.image
+            } 
+        });
 
 
     } catch (error) {
@@ -51,17 +60,86 @@ router.post('/login', async (req, res) => {
         }
         const token = generateJWT(payload);
 
-        res.json({ token })
-
-
-        res.json({ token })
+        res.json({ 
+            token, 
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                image: user.image
+            }
+        });
 
 
     } catch (error) {
         console.log(error);
-
     }
 })
+
+/**
+ * @route   PUT /user/profile
+ * @desc    Change the name or profile image of the logged-in user
+ */
+router.put('/profile', authMiddleware, upload.single('image'), async (req, res) => {
+    try {
+        const { name } = req.body;
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ error: "User not found" });
+
+        // Update name if provided
+        if (name) user.name = name;
+
+        // Update image if a new file is uploaded
+        if (req.file) {
+            user.image = req.file.path;
+        }
+
+        await user.save();
+
+        res.json({ 
+            message: "Profile updated successfully", 
+            user: { 
+                id: user.id, 
+                name: user.name, 
+                email: user.email,
+                image: user.image 
+            } 
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- GOOGLE AUTH ROUTES ---
+const passport = require('passport');
+require('../config/passport');
+
+router.get('/google', passport.authenticate('google', { scope: ['email', 'profile'] }));
+
+router.get('/google/callback', 
+    passport.authenticate('google', { session: false }), 
+    (req, res) => {
+        const payload = {
+            id: req.user.id,
+            email: req.user.email,
+            role: req.user.role
+        };
+        const token = generateJWT(payload);
+
+        // Redirect to frontend (localhost:5173) instead of sending JSON
+        const userData = JSON.stringify({
+            id: req.user.id,
+            name: req.user.name,
+            email: req.user.email,
+            role: req.user.role,
+            image: req.user.image
+        });
+
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        res.redirect(`${frontendUrl}/auth/callback?token=${token}&user=${encodeURIComponent(userData)}`);
+    }
+);
 
 // --- ADDRESS ROUTES ---
 
@@ -145,6 +223,97 @@ router.delete('/address/:id', authMiddleware, async (req, res) => {
         await user.save();
 
         res.json({ message: "Address deleted successfully", addresses: user.addresses });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+const nodemailer = require('nodemailer');
+
+// --- PASSWORD RESET ROUTES ---
+
+/**
+ * @route   POST /user/forgot-password
+ * @desc    Send 6-digit OTP to user's email
+ */
+router.post('/forgot-password', async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ error: "Email is required" });
+
+        const user = await User.findOne({ email });
+        if (!user) return res.status(404).json({ error: "User not found with this email" });
+
+        // Generate 6-digit OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        user.resetOtp = otp;
+        user.resetOtpExpiry = Date.now() + 10 * 60 * 1000; // 10 minutes
+        await user.save();
+
+        const { sendEmail } = require('../utils/emailService');
+        const { otpTemplate } = require('../utils/emailTemplates');
+
+        await sendEmail(email, 'Password Reset OTP - Yogi Fashion', otpTemplate(otp));
+        
+        res.json({ message: "OTP sent to your email successfully" });
+
+    } catch (error) {
+        console.error("Forgot password error:", error);
+        res.status(500).json({ error: "Failed to send OTP. Please try again later." });
+    }
+});
+
+/**
+ * @route   POST /user/verify-otp
+ * @desc    Verify the OTP sent to email
+ */
+router.post('/verify-otp', async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+        if (!email || !otp) return res.status(400).json({ error: "Email and OTP are required" });
+
+        const user = await User.findOne({ 
+            email, 
+            resetOtp: otp,
+            resetOtpExpiry: { $gt: Date.now() }
+        });
+
+        if (!user) return res.status(400).json({ error: "Invalid or expired OTP" });
+
+        res.json({ message: "OTP verified successfully. You can now reset your password." });
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * @route   POST /user/reset-password
+ * @desc    Update password using verified OTP
+ */
+router.post('/reset-password', async (req, res) => {
+    try {
+        const { email, otp, newPassword } = req.body;
+        if (!email || !otp || !newPassword) {
+            return res.status(400).json({ error: "Email, OTP, and new password are required" });
+        }
+
+        const user = await User.findOne({ 
+            email, 
+            resetOtp: otp,
+            resetOtpExpiry: { $gt: Date.now() }
+        });
+
+        if (!user) return res.status(400).json({ error: "Invalid or expired OTP" });
+
+        // Update password (pre-save hook will hash it)
+        user.password = newPassword;
+        user.resetOtp = null;
+        user.resetOtpExpiry = null;
+        await user.save();
+
+        res.json({ message: "Password reset successful. You can now login with your new password." });
+
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
