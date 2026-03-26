@@ -5,8 +5,10 @@ const User = require('../models/userModel');
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: `${process.env.BACKEND_URL || 'http://localhost:4000'}/user/google/callback`,
-    passReqToCallback: true
+    // Use .replace(/\/$/, '') to remove any potential trailing slash
+    callbackURL: `${(process.env.BACKEND_URL || 'http://localhost:4000').replace(/\/$/, '')}/user/google/callback`,
+    passReqToCallback: true,
+    proxy: true // Needed for production (HTTPS)
 },
 async function(request, accessToken, refreshToken, profile, done) {
     try {
