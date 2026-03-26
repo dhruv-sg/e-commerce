@@ -136,7 +136,7 @@ router.get('/google/callback',
             image: req.user.image
         });
 
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
         res.redirect(`${frontendUrl}/auth/callback?token=${token}&user=${encodeURIComponent(userData)}`);
     }
 );
