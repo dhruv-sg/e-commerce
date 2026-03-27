@@ -1,7 +1,14 @@
 const nodemailer = require('nodemailer');
+const { Settings } = require('../models/settingsModel');
 
 const sendEmail = async (to, subject, html) => {
     try {
+        const settings = await Settings.findOne();
+        if (settings && !settings.isEmailEnabled) {
+            console.log("Email Service skipped: Globally disabled in settings.");
+            return { message: "Email globally disabled" };
+        }
+
         const transporter = nodemailer.createTransport({
             host: "smtp.gmail.com",
             port: 587,

@@ -166,4 +166,32 @@ router.get('/customer-orders/:userId', authMiddleware, adminOnly, async (req, re
     }
 });
 
+const { Settings } = require('../models/settingsModel');
+
+// GET /admin/settings - Get current global settings
+router.get('/settings', authMiddleware, adminOnly, async (req, res) => {
+    try {
+        const settings = await Settings.findOne();
+        res.json(settings);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// PUT /admin/settings/email - Toggle global email service
+router.put('/settings/email', authMiddleware, adminOnly, async (req, res) => {
+    try {
+        const { isEmailEnabled } = req.body;
+        if (typeof isEmailEnabled !== 'boolean') {
+            return res.status(400).json({ error: 'isEmailEnabled must be a boolean' });
+        }
+
+        const settings = await Settings.findOneAndUpdate({}, { isEmailEnabled }, { new: true, upsert: true });
+        res.json(settings);
+        console.log(`Global Email Service sets to: ${isEmailEnabled}`);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;

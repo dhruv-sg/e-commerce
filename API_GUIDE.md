@@ -318,7 +318,16 @@ Returns all orders placed by a specific user.
 - **Headers**: `Authorization: Bearer <admin_token>`
 - **Response**: Returns an array of order objects.
 
-### 4. **Create Product** (Admin Only)
+### 4. **Global Settings Management**
+View or toggle system-wide features like the email service.
+- **Method**: `GET`
+- **Path**: `/admin/settings`
+- **Method**: `PUT`
+- **Path**: `/admin/settings/email`
+- **Body** (JSON): `{ "isEmailEnabled": true/false }`
+- **Headers**: `Authorization: Bearer <admin_token>`
+
+### 5. **Create Product** (Admin Only)
 Supports a high-level **Variant System** using pure Form-Data.
 - **Method**: `POST`
 - **Path**: `/product`

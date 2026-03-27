@@ -244,6 +244,13 @@ router.post('/forgot-password', async (req, res) => {
         const user = await User.findOne({ email });
         if (!user) return res.status(404).json({ error: "User not found with this email" });
 
+        // Check if global email service is enabled
+        const { Settings } = require('../models/settingsModel');
+        const settings = await Settings.findOne();
+        if (settings && !settings.isEmailEnabled) {
+            return res.status(503).json({ error: "Email service is temporarily off. Please contact support or try again later." });
+        }
+
         // Generate 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         user.resetOtp = otp;

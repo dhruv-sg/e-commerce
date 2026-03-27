@@ -6,6 +6,9 @@ const db = require("./db")
 
 dotenv.config();
 
+const { initializeSettings } = require('./models/settingsModel');
+initializeSettings();
+
 // Enable CORS for all origins
 app.use(cors());
 app.use(express.json());
