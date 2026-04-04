@@ -1,381 +1,485 @@
-# 🚀 E-Commerce Professional API Guide
+# Yogi Fashion E-Commerce API Documentation
 
-This document provides a comprehensive guide to the E-Commerce Backend API. It includes detailed instructions on authentication, product management (with variants), and order processing.
+## Base URL
+`http://localhost:4000` (or your production URL like `https://yogi-fashion-backend.onrender.com`)
 
----
+## Authentication & Authorization
+Most protected routes require a JWT token in the Authorization header.
+**Format:** `Authorization: Bearer <your_jwt_token>`
 
-## 📋 Table of Contents
-1. [Authentication](#-authentication-user)
-2. [Categories](#-categories-category)
-3. [Products](#-products-product)
-   - [Variant System Guide](#-variant-system-guide)
-4. [Orders](#-orders-order)
-5. [Common Responses & Security](#-common-responses--security)
-
-## 🚀 How to Test in Postman
-
-To test the complex parts of this API (like variants and photos), follow these specific Postman setups:
-
-### 1. **Sign Up (New User)**
-- **Tab**: `Body` -> `form-data`
-- **Keys**:
-  - `name`: `John Doe`
-  - `email`: `john@example.com`
-  - `password`: `john123`
-  - `role`: `admin` (Use admin to test product creation)
-  - `image`: [Select a file from your computer]
-
-### 2. **Create Product with Variants (The Hard Part)**
-This uses the prefix system to group data and photos.
-- **Headers**: `Authorization: Bearer <your_token>`
-- **Tab**: `Body` -> `form-data`
-- **Setup**:
-| Key | Value | Type |
-| :--- | :--- | :--- |
-| `hasVariant` | `Yes` | Text |
-| `name` | `Nike Runner` | Text |
-| `brand` | `Nike` | Text |
-| `category` | `[Your_Category_ID]` | Text |
-| **--- Variant 1 ---** | | |
-| `V1_color` | `Blue` | Text |
-| `V1_price` | `2500` | Text |
-| `V1_stock` | `10` | Text |
-| `V1_images` | `[Select Blue Shoe Photo]` | **File** |
-| **--- Variant 2 ---** | | |
-| `V2_color` | `Red` | Text |
-| `V2_price` | `2600` | Text |
-| `V2_stock` | `5` | Text |
-| `V2_images` | `[Select Red Shoe Photo]` | **File** |
-
-> [!NOTE]
-> Postman allows multiple files for the same key. If you want 3 photos for the Blue variant, just add `V1_images` three times and select different files.
-
-### 3. **Place an Order**
-- **Headers**: `Authorization: Bearer <token>`
-- **Tab**: `Body` -> `raw` (Select `JSON`)
-- **Body**:
-```json
-{
-  "paymentMethod": "COD",
-  "shippingAddress": {
-    "street": "123 Street",
-    "city": "Mumbai",
-    "state": "MH",
-    "zip": "400001",
-    "phone": "9999999999"
-  },
-  "orderItems": [
-    {
-      "product": "PARENT_PRODUCT_ID",
-      "variant": "SPECIFIC_VARIANT_ID", // If no variant, use same as PARENT_PRODUCT_ID
-      "quantity": 1
-    }
-  ]
-}
-```
-
-> [!IMPORTANT]
-> **How IDs work**:
-> - If product has **NO variants**: Both `product` and `variant` should be the same ID.
-> - If product **HAS variants**: `product` is the main ID, and `variant` is the `_id` found inside the `variants` array.
+Admin-only routes require a user token where `role === "admin"`.
 
 ---
 
-## 🔐 Authentication (`/user`)
+## 1. User Authentication & Accounts (`/user`)
 
-### 1. **User Sign Up**
-Create a new user account with an optional profile image.
-- **Method**: `POST`
-- **Path**: `/user/signup`
-- **Content-Type**: `multipart/form-data`
-- **Body**:
-  - `name`: String (Required)
-  - `email`: String (Required, Unique)
-  - `password`: String (Required)
-  - `role`: String (Optional: `user` or `admin`. Default: `user`)
-  - `image`: File (Optional - Profile picture)
-- **Response**:
+### 1.1 Sign Up
+- **Method:** `POST`
+- **Path:** `/user/signup`
+- **Format:** `multipart/form-data`
+- **Body Data:**
+  - `name`: String
+  - `email`: String
+  - `password`: String
+  - `role`: String (user/admin)
+  - `image`: File (optional)
+- **Sample Response (200 OK):**
   ```json
   {
-    "token": "...",
+    "token": "eyJhbG...",
     "user": {
-      "name": "John Doe",
-      "email": "john@example.com",
+      "id": "60d5ec...",
+      "name": "Jane Doe",
+      "email": "jane@example.com",
       "role": "user",
-      "image": "..."
+      "image": "url_to_cloudinary_image"
     }
   }
   ```
 
-### 2. **User Login**
-Authenticate and receive a JWT token.
-- **Method**: `POST`
-- **Path**: `/user/login`
-- **Content-Type**: `application/json`
-- **Body**:
+### 1.2 Login
+- **Method:** `POST`
+- **Path:** `/user/login`
+- **Format:** `multipart/form-data`
+- **Body Data:**
   ```json
   {
-    "email": "user@example.com",
-    "password": "yourPassword123"
+    "email": "jane@example.com",
+    "password": "password123"
   }
   ```
-- **Response**:
-```json
-{
-  "token": "...",
-  "user": {
-    "name": "John Doe",
-    "email": "john@example.com",
-    "role": "user",
-    "image": "..."
-  }
-}
-```
+- **Sample Response (200 OK):** *(Same as Sign Up response)*
 
-#### 3. **Update Profile**
-Change your basic information (e.g. name).
-- **Method**: `PUT`
-- **Path**: `/user/profile`
-- **Auth**: Required
-- **Content-Type**: `multipart/form-data`
-- **Body** (form-data): 
-  - `name`: Text (Optional)
-  - `image`: File (Optional - Profile picture)
-- **Response**:
+### 1.3 Update Profile (Logged-in User)
+- **Method:** `PUT`
+- **Path:** `/user/profile`
+- **Auth:** Required 
+- **Format:** `multipart/form-data`
+- **Body Data:**
+  - `name`: String (optional)
+  - `image`: File (optional profile photo)
+- **Sample Response (200 OK):**
   ```json
   {
     "message": "Profile updated successfully",
-    "user": {
-      "name": "John Doe",
-      "email": "john@example.com",
-      "image": "..."
-    }
+    "user": { "id": "...", "name": "Jane Updated", "email": "...", "image": "..." }
   }
   ```
 
-
-### 3. **Manage Addresses**
-Add or fetch stored addresses to use during ordering.
-- **Get Addresses**:
-  - **Method**: `GET`
-  - **Path**: `/user/address`
-  - **Auth**: Required
-- **Add Address**:
-  - **Method**: `POST`
-  - **Path**: `/user/address`
-  - **Auth**: Required
-  - **Content-Type**: `multipart/form-data`
-  - **Body** (form-data): `street`, `city`, `state`, `zip`, `phone`
-- **Update Address**:
-  - **Method**: `PUT`
-  - **Path**: `/user/address/:id`
-  - **Auth**: Required
-  - **Content-Type**: `multipart/form-data`
-  - **Body** (form-data): Any field above to update.
-- **Delete Address**:
-  - **Method**: `DELETE`
-  - **Path**: `/user/address/:id`
-  - **Auth**: Required
-
-#### 3. **Google Authentication**
-Streamlined login/signup using Google.
-- **Start Login**:
-  - **Method**: `GET`
-  - **Path**: `/user/google`
-  - **Action**: Redirects user to Google Consent screen.
-- **Callback Handler**:
-  - **Method**: `GET`
-  - **Path**: `/user/google/callback`
-  - **Note**: Redirects back to **`http://localhost:5173/auth/callback`** with the following URL parameters:
-    - `token`: The JWT authentication token.
-    - `user`: Stringified and URI-encoded user object.
-
-**Configuration Required (`.env`):**
-```
-GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
-```
-
-#### 4. **Password Reset (OTP)**
-Secure recovery using email OTP.
-- **Request OTP**:
-  - **Method**: `POST`
-  - **Path**: `/user/forgot-password`
-  - **Body**: `{ "email": "..." }`
-- **Verify OTP**:
-  - **Method**: `POST`
-  - **Path**: `/user/verify-otp`
-  - **Body**: `{ "email": "...", "otp": "..." }`
-- **Reset Password**:
-  - **Method**: `POST`
-  - **Path**: `/user/reset-password`
-  - **Body**: `{ "email": "...", "otp": "...", "newPassword": "..." }`
-
-**Note**: OTP is valid for 10 minutes.
-
----
-
-## 📁 Categories (`/category`)
-
-### 1. **Get All Categories**
-- **Method**: `GET`
-- **Path**: `/category`
-
-### 2. **Create Category** (Admin Only)
-- **Method**: `POST`
-- **Path**: `/category`
-- **Headers**: `Authorization: Bearer <token>`
-- **Body** (form-data): `name`, `slug`, `image` (File)
-
-### 3. **Update Category** (Admin Only)
-Modify an existing category. Pass the `id` in the body.
-- **Method**: `PUT`
-- **Path**: `/api/categories/update`
-- **Headers**: `Authorization: Bearer <token>`
-- **Body** (form-data): `id` (Required), `name`, `slug`, `image` (File)
-
----
-
-## 🛍️ Products (`/product`)
-
-### 1. **Get All Products**
-- **Method**: `GET`
-- **Path**: `/product`
-- **Note**: Use this for full product data.
-
-### 2. **Get Product Thumbnails** (Recommended for Listings)
-Lightweight response supporting pagination, sorting, and category filtering.
-- **Method**: `GET`
-- **Path**: `/product/thumbnail`
-- **Options (Query Params)**:
-  - `page`: Number (Default: 1)
-  - `limit`: Number (Default: 10)
-  - `category`: Category ID (Filter by category)
-  - `sort`: `lowToHigh`, `highToLow`, or `newArrivals`
-- **Fields**: `_id`, `name`, `brand`, `images`, `price`, `discountPrice`
-- **Response**:
-```json
-{
-  "products": [...],
-  "total": 50,
-  "page": 1,
-  "limit": 10
-}
-```
-
-### 3. **Get Trending Products** (Trending Thumbnails)
-Returns the top 10 most sold products in the lightweight thumbnail format.
-- **Method**: `GET`
-- **Path**: `/product/thumbnail/trending`
-- **Auth**: Not required
-- **Response**: Same format as `/thumbnail`, but sorted by sales quantity with an extra `totalSold` field.
-
-### 4. **Wishlist Management**
-- **GET** `/product/thumbnail/wishlist`: Returns lightweight thumbnails of items in your wishlist. (Auth required)
-- **POST** `/product/wishlist/:id`: Adds a product to your wishlist by ID. (Auth required)
-- **GET** `/product/wishlist/remove/:id`: Removes a product from your wishlist by ID. (Auth required)
-
-### 5. **Similar Products (You may also like)**
-Fetch products from the same category to show as recommendations on the product detail page.
-- **Method**: `GET`
-- **Path**: `/product/similar/:id`
-- **Response**: Returns an array of up to 8 similar product thumbnails.
-
----
-
-## 👑 Admin Endpoints (`/admin`)
-
-### 1. **Get Dashboard Stats**
-Returns a complete overview of products, orders, revenue, and alerts.
-- **Method**: `GET`
-- **Path**: `/admin/dashboard`
-- **Headers**: `Authorization: Bearer <admin_token>`
-
-### 2. **Get All Customers**
-Returns a list of all users with `role: user` and their total order count.
-- **Method**: `GET`
-- **Path**: `/admin/customers`
-- **Headers**: `Authorization: Bearer <admin_token>`
-- **Response**:
+### 1.4 Get User Addresses
+- **Method:** `GET`
+- **Path:** `/user/address`
+- **Auth:** Required
+- **Sample Response (200 OK):**
   ```json
   [
     {
-      "_id": "...",
-      "name": "Customer Name",
-      "email": "customer@example.com",
-      "image": "url_to_profile_pic",
-      "role": "user",
-      "orderCount": 5,
-      "createdAt": "2024-01-01T00:00:00.000Z"
+      "_id": "abc...",
+      "street": "123 Main St",
+      "city": "Mumbai",
+      "state": "MH",
+      "zip": "400001",
+      "phone": "9876543210"
     }
   ]
   ```
 
-### 3. **Get Customer Orders**
-Returns all orders placed by a specific user.
-- **Method**: `GET`
-- **Path**: `/admin/customer-orders/:userId`
-- **Headers**: `Authorization: Bearer <admin_token>`
-- **Response**: Returns an array of order objects.
-
-### 4. **Global Settings Management**
-View or toggle system-wide features like the email service.
-- **Method**: `GET`
-- **Path**: `/admin/settings`
-- **Method**: `PUT`
-- **Path**: `/admin/settings/email`
-- **Body** (JSON): `{ "isEmailEnabled": true/false }`
-- **Headers**: `Authorization: Bearer <admin_token>`
-
-### 5. **Create Product** (Admin Only)
-Supports a high-level **Variant System** using pure Form-Data.
-- **Method**: `POST`
-- **Path**: `/product`
-- **Headers**: `Authorization: Bearer <token>`
-- **Content-Type**: `multipart/form-data`
-
-#### **Standard Fields**:
-| Key | Type | Description |
-| :--- | :--- | :--- |
-| `hasVariant` | String | `Yes` or `No`. If `No`, uses the following global fields. |
-| `name` | String | Product name. |
-| `description` | String | Detailed description. |
-| `brand` | String | Brand name. |
-| `category` | ObjectId | Category ID. |
-| `price` | Number | Global price. |
-| `discountPrice`| Number | Global discounted price. |
-| `stock` | Number | Global stock. |
-| `images` | Files | Global product photos. |
-
----
-
-### 🎨 Variant System Guide
-
-If `hasVariant` is set to **`Yes`**, you can define multiple variants (e.g., Color/Size) with their own prices and photos. Use prefixes `V1_`, `V2_`, etc.
-
-> [!TIP]
-> **Auto-Sync Feature**: When `hasVariant` is `Yes`, the server automatically copies **Variant 1 (V1)** data to the global fields. This ensures your "Thumbnail" view always shows a valid price and image without manual entry.
-
-#### **Variant Fields Example (V1)**:
-- `V1_color`: "Midnight Blue"
-- `V1_size`: "Large"
-- `V1_price`: 1500
-- `V1_discountPrice`: 1200
-- `V1_stock`: 50
-- `V1_images`: [File1, File2] (Upload photos specific to this color)
-
----
-
-## 🛒 Orders (`/order`)
-
-### 1. **Place an Order**
-Purchase one or more products. Supports specific variant selection.
-- **Method**: `POST`
-- **Path**: `/order`
-- **Body** (application/json):
+### 1.5 Add Address
+- **Method:** `POST`
+- **Path:** `/user/address`
+- **Auth:** Required
+- **Format:** `multipart/form-data`
+- **Body Data:** `street`, `city`, `state`, `zip`, `phone`
+- **Sample Response (201 Created):**
   ```json
   {
-    "paymentMethod": "COD", // or "Online"
+    "message": "Address added successfully",
+    "addresses": [ /* updated array */ ]
+  }
+  ```
+
+### 1.6 Update Address
+- **Method:** `PUT`
+- **Path:** `/user/address/:id`
+- **Auth:** Required
+- **Format:** `multipart/form-data`
+- **Body Data:** Any subset of `street`, `city`, `state`, `zip`, `phone`
+- **Sample Response (200 OK):**
+  ```json
+  {
+    "message": "Address updated successfully",
+    "addresses": [ /* updated array */ ]
+  }
+  ```
+
+### 1.7 Delete Address
+- **Method:** `DELETE`
+- **Path:** `/user/address/:id`
+- **Auth:** Required
+- **Sample Response (200 OK):**
+  ```json
+  {
+    "message": "Address deleted successfully",
+    "addresses": [ /* updated array */ ]
+  }
+  ```
+
+### 1.8 Forgot Password (Request OTP)
+- **Method:** `POST`
+- **Path:** `/user/forgot-password`
+- **Format:** `multipart/form-data`
+- **Body Data:**
+  ```json
+  { "email": "jane@example.com" }
+  ```
+- **Sample Response (200 OK):**
+  ```json
+  { "message": "OTP sent to your email successfully" }
+  ```
+
+### 1.9 Verify Password Reset OTP
+- **Method:** `POST`
+- **Path:** `/user/verify-otp`
+- **Format:** `multipart/form-data`
+- **Body Data:**
+  ```json
+  {
+    "email": "jane@example.com",
+    "otp": "123456"
+  }
+  ```
+- **Sample Response (200 OK):**
+  ```json
+  { "message": "OTP verified successfully. You can now reset your password." }
+  ```
+
+### 1.10 Reset Password
+- **Method:** `POST`
+- **Path:** `/user/reset-password`
+- **Format:** `multipart/form-data`
+- **Body Data:**
+  ```json
+  {
+    "email": "jane@example.com",
+    "otp": "123456",
+    "newPassword": "newsecurepassword123"
+  }
+  ```
+- **Sample Response (200 OK):**
+  ```json
+  { "message": "Password reset successful. You can now login with your new password." }
+  ```
+
+
+---
+
+## 2. Products (`/product`)
+
+### 2.1 Get Detailed Products
+- **Method:** `GET`
+- **Path:** `/product`
+- **Sample Response (200 OK):** Full detailed array of all products including sub-arrays and object references.
+
+### 2.2 Get Lightweight Product List 
+- **Method:** `GET`
+- **Path:** `/product/list`
+- **Description:** Optimized for general catalog browsing.
+- **Sample Response (200 OK):** Returns array of products containing only `hasVariant`, `name`, `price`, `discountPrice`, `images`, `category`, and `variants`.
+
+### 2.3 Get Thumbnails (With Pagination & Sorting)
+- **Method:** `GET`
+- **Path:** `/product/thumbnail?page=1&limit=10&sort=newArrivals&category=categoryId`
+- **Query Params:**
+  - `page`: default 1
+  - `limit`: default 10
+  - `sort`: `lowToHigh`, `highToLow`, `newArrivals`
+  - `category`: optional Category ObjectId
+- **Sample Response (200 OK):**
+  ```json
+  {
+    "products": [
+      { "_id": "...", "name": "T-Shirt", "brand": "Puma", "price": 1000, "discountPrice": 800, "images": ["url"] }
+    ],
+    "total": 50,
+    "page": 1,
+    "limit": 10
+  }
+  ```
+
+  }
+  ```
+ 
++### 2.4 Get Thumbnails (Batch by IDs)
++- **Method:** `POST`
++- **Path:** `/product/thumbnail/batch`
++- **Description:** Useful for fetching cart items or recently viewed products in a single call.
++- **Body Data:**
++  ```json
++  { "ids": ["id1", "id2", "id3"] }
++  ```
++- **Sample Response (200 OK):** Returns an array of product thumbnails in the same order as provided in the `ids` array.
++
++
+ ### 2.4 Get Trending Products
+- **Method:** `GET`
+- **Path:** `/product/thumbnail/trending`
+- **Sample Response (200 OK):** Returns top 10 most sold products dynamically derived from order history.
+
+### 2.5 My Wishlist
+- **Method:** `GET`
+- **Path:** `/product/thumbnail/wishlist`
+- **Auth:** Required
+- **Sample Response (200 OK):** Returns array of populated wishlist products for a user.
+
+### 2.6 Add to Wishlist
+- **Method:** `POST`
+- **Path:** `/product/wishlist/:id`
+- **Auth:** Required
+- **Sample Response (200 OK):** `{ "success": true, "message": "Added to wishlist" }`
+
+### 2.7 Remove from Wishlist
+- **Method:** `GET` 
+- **Path:** `/product/wishlist/remove/:id`
+- **Auth:** Required
+- **Sample Response (200 OK):** `{ "success": true, "message": "Removed from wishlist" }`
+
+### 2.8 Get Single Product
+- **Method:** `GET`
+- **Path:** `/product/:id`
+- **Sample Response (200 OK):** Returns a single fully-populated product object.
+
+### 2.9 Get Similar Products
+- **Method:** `GET`
+- **Path:** `/product/similar/:id`
+- **Sample Response (200 OK):** Returns up to 8 products sharing the same category as the input specific product ID.
+
+### 2.10 Search Products
+Get a paginated list of products matching a search query (checks name, brand, and category name).
+- **Method:** `GET`
+- **Path:** `/product/search?q=keyword&page=1&limit=10`
+- **Query Params:**
+  - `q`: Search keyword (Required)
+  - `page`: default 1
+  - `limit`: default 10
+- **Sample Response (200 OK):**
+  ```json
+  {
+    "products": [
+      {
+        "_id": "...",
+        "name": "Nike Shoes",
+        "brand": "Nike",
+        "price": 5000,
+        "discountPrice": 4500,
+        "images": ["url"],
+        "category": { "name": "Footwear", "slug": "footwear" }
+      }
+    ],
+    "total": 1,
+    "page": 1,
+    "limit": 10
+  }
+  ```
+
+### 2.11 Admin: Create Product
+- **Method:** `POST`
+- **Path:** `/product`
+- **Auth:** Required (Admin Only)
+- **Format:** `multipart/form-data`
+- **Body Data:** Complex form-data supporting attributes (`name`, `description`, `price`), and global images via `images` key.
+  - Supports variants formatted correctly like `V1_color="Red"`, `V1_price=200`, `V1_images=File`.
+- **Sample Response (201 Created):** Returns freshly created product.
+
+
+---
+
+## 3. Categories (`/api/categories`)
+
+### 3.1 Get All Categories
+- **Method:** `GET`
+- **Path:** `/api/categories`
+- **Sample Response (200 OK):**
+  ```json
+  [
+    { "_id": "...", "name": "Men's Clothing", "slug": "mens-clothing", "image": "url" }
+  ]
+  ```
+
+### 3.2 Get Single Category
+- **Method:** `GET`
+- **Path:** `/api/categories/:slug` (Param can be slug string or Mongo ObjectId)
+- **Sample Response (200 OK):** Single category object.
+
+### 3.3 Admin: Create Category
+- **Method:** `POST`
+- **Path:** `/api/categories`
+- **Auth:** Required (Admin Only)
+- **Format:** `multipart/form-data`
+- **Body Data:** `name`, `slug`, `image` (file)
+- **Sample Response (201 Created):** 
+  ```json
+  { "_id": "...", "name": "Jeans", "slug": "jeans", "image": "url" }
+  ```
+
+### 3.4 Admin: Update Category
+- **Method:** `PUT`
+- **Path:** `/api/categories/:id`
+- **Auth:** Required (Admin Only)
+- **Format:** `multipart/form-data`
+- **Body Data:**
+  - `name` (Optional string)
+  - `slug` (Optional string)
+  - `image` (Optional file)
+- **Sample Response (200 OK):**
+  ```json
+  { "message": "Category updated successfully", "category": { "_id": "...", "name": "...", "slug": "...", "image": "..." } }
+  ```
+
+### 3.5 Admin: Delete Category
+- **Method:** `DELETE`
+- **Path:** `/api/categories/:id`
+- **Auth:** Required (Admin Only)
+- **Sample Response (200 OK):**
+  ```json
+  { "message": "Category deleted successfully" }
+  ```
+
+
+---
+
+## 4. Promo Codes (`/promo`)
+
+### 4.1 Get All Active Promos (for customers)
+- **Method:** `GET`
+- **Path:** `/promo`
+- **Description:** Returns a list of all currently active promo codes valid within their start/expiry window.
+- **Sample Response (200 OK):**
+  ```json
+  [
+    {
+      "code": "YOGI10",
+      "description": "10% off sitewide",
+      "expiryDate": "2026-12-31T23:59:59.000Z",
+      "minOrderAmount": 500,
+      "maxDiscount": 200,
+      "perUserLimit": 1,
+      "applicableProducts": [ { "_id": "...", "name": "..." } ],
+      "applicableCategories": [ { "_id": "...", "name": "..." } ]
+    }
+  ]
+  ```
+
+### 4.2 Validate Promo Code (Customer Cart Check)
+- **Method:** `POST`
+- **Path:** `/promo/validate`
+- **Auth:** Required
+- **Format:** `multipart/form-data`
+- **Body Data:**
+  ```json
+  {
+    "code": "YOGI10",
+    "totalAmount": 3000,
+    "cartItems": [
+      {
+        "product": "product_objectId_here",
+        "category": "category_objectId_here",
+        "price": 2000,
+        "quantity": 1
+      },
+      {
+        "product": "another_product_id",
+        "category": "category_objectId_here",
+        "price": 1000,
+        "quantity": 1
+      }
+    ]
+  }
+  ```
+- **Note:** `price` and `quantity` in `cartItems` are required when the promo is product/category-specific. The discount will only be applied to the eligible items' subtotal, not the entire cart value.
+- **Sample Response (200 OK):**
+  ```json
+  {
+    "valid": true,
+    "discountAmount": 200,
+    "finalAmount": 1800,
+    "code": "YOGI10",
+    "description": "10% Off Sitewide"
+  }
+  ```
+
+### 4.2 Admin: Create Promo Code
+- **Method:** `POST`
+- **Path:** `/promo/admin`
+- **Auth:** Required (Admin Only)
+- **Format:** `multipart/form-data`
+- **Body Data:**
+  ```json
+  {
+    "code": "YOGI10",
+    "description": "10% off",
+    "discountType": "percentage",    // percentage or fixed
+    "discountValue": 10,             // if percentage then 10 means 10% off else 10 means 10rs off
+    "maxDiscount": 200,           // Optional: Only used for percentage
+    "minOrderAmount": 500,        // Optional: Default 0
+    "usageLimit": 100,            // Optional: Total times code can be used
+    "perUserLimit": 1,            // Optional: Default 1
+    "applicableProducts": [       // Optional: Array of Product IDs
+      "66f1b1a2c3d4e5f6g7h8i9j0"
+    ],     
+    "applicableCategories": [],   // Optional: Array of Category IDs
+    "startDate": "2026-01-01",    // Format: YYYY-MM-DD 
+    "expiryDate": "2026-12-31"    // Format: YYYY-MM-DD
+  }
+  ```
+- **Sample Response (201 Created):** Newly created Promo Code document.
+
+### 4.3 Admin: View All Promos
+- **Method:** `GET`
+- **Path:** `/promo/admin`
+- **Auth:** Required (Admin Only)
+- **Sample Response (200 OK):** Array of all registered promo codes containing statistics like `usedCount`.
+
+### 4.4 Admin: Update Promo
+- **Method:** `PUT`
+- **Path:** `/promo/admin/:id`
+- **Auth:** Required (Admin Only)
+- **Format:** `multipart/form-data`
+- **Sample Response (200 OK):** Modified Promo Code document.
+
+### 4.5 Admin: Toggle Active Status
+- **Method:** `PATCH`
+- **Path:** `/promo/admin/:id/toggle`
+- **Auth:** Required (Admin Only)
+- **Sample Response (200 OK):**
+  ```json
+  {
+    "message": "Promo code deactivated",
+    "promo": { /* updated object */ }
+  }
+  ```
+
+### 4.6 Admin: Delete Promo
+- **Method:** `DELETE`
+- **Path:** `/promo/admin/:id`
+- **Auth:** Required (Admin Only)
+- **Sample Response (200 OK):** `{ "message": "Promo code deleted successfully" }`
+
+
+---
+
+## 5. Orders & Checkout (`/order`)
+
+### 5.1 Create Order
+- **Method:** `POST`
+- **Path:** `/order`
+- **Auth:** Required
+- **Format:** `multipart/form-data`
+- **Body Data:**
+  ```json
+  {
+    "paymentMethod": "COD",
+    "promoCode": "YOGI10",       // Optional
+    "pendingOrderId": "order_id_here", // Optional: Pass the old Online order ID if user abandons payment and switches to COD
     "shippingAddress": {
       "street": "123 Main St",
       "city": "Mumbai",
@@ -385,42 +489,154 @@ Purchase one or more products. Supports specific variant selection.
     },
     "orderItems": [
       {
-        "product": "PARENT_PRODUCT_ID",
-        "color": "Midnight Blue", // Optional: matches specific variant
-        "size": "Large",          // Optional: matches specific variant
+        "product": "PRODUCT_ID_STR",
+        "variant": "VARIANT_ID_STR", // Optional
         "quantity": 1
       }
     ]
   }
   ```
+- **Note on Abandoned Payments:** If a user starts an Online payment, closes Razorpay, and retries with COD — pass the old `_id` from the failed online order as `pendingOrderId`. The server will automatically cancel it before creating the new one. Orders stuck in `PENDING_PAYMENT` for more than **30 minutes** are also auto-cancelled on every new order request.
 
-### 2. **Payment Verification** (Online Orders)
-Used after a successful Razorpay transaction.
-- **Method**: `POST`
-- **Path**: `/order/verify-payment`
-- **Body**: `razorpay_order_id`, `razorpay_payment_id`, `razorpay_signature`
+### 5.2 Verify Online Payment (Webhook/Callback substitute)
+- **Method:** `POST`
+- **Path:** `/order/verify-payment`
+- **Auth:** Required
+- **Format:** `multipart/form-data`
+- **Body Data:**
+  ```json
+  {
+    "razorpay_order_id": "order_...",
+    "razorpay_payment_id": "pay_...",
+    "razorpay_signature": "sign_..."
+  }
+  ```
+- **Sample Response (200 OK):** `{ "success": true, "message": "Payment verified successfully" }`
 
-### 3. **My Orders**
-- **Method**: `GET`
-- **Path**: `/order/myorders`
-- **Auth**: Required
+### 5.3 Get My Orders
+- **Method:** `GET`
+- **Path:** `/order/myorders`
+- **Auth:** Required
+- **Sample Response (200 OK):** Array of all orders owned by the logged-in user.
 
-### 4. **Get Single Order Detail** (Customer)
-Fetch the full details of a specific order you placed.
-- **Method**: `GET`
-- **Path**: `/order/myorders/:id`
-- **Auth**: Required
-- **Response**: Returns the order object.
+### 5.4 Get My Single Order Detail
+- **Method:** `GET`
+- **Path:** `/order/myorders/:id`
+- **Auth:** Required
+- **Sample Response (200 OK):** Returns single matching order object.
+
+### 5.5 Get Order by ID (Privileged)
+- **Method:** `GET`
+- **Path:** `/order/:id`
+- **Auth:** Required (Must be Admin or the owner of the order)
+- **Sample Response (200 OK):** Returns order with populated `user.name` and `user.email`.
+
+### 5.6 Admin: Get All Orders
+- **Method:** `GET`
+- **Path:** `/order/admin/all`
+- **Auth:** Required (Admin Only)
+- **Sample Response (200 OK):** Array of every order in the system.
+
+### 5.7 Admin: Update Order Status
+- **Method:** `PUT`
+- **Path:** `/order/status`
+- **Auth:** Required (Admin Only)
+- **Format:** `multipart/form-data`
+- **Body Data:**
+  ```json
+  {
+    "orderId": "id_here",
+    "status": "Shipped",          // Optional (enum: 'PENDING_PAYMENT', 'Processing', 'Shipped', 'Delivered', 'Cancelled')
+    "paymentStatus": "PAID"       // Optional (enum: 'UNPAID', 'PAID', 'FAILED', 'REFUNDED')
+  }
+  ```
+- **Sample Response (200 OK):** Triggers user email update and returns updated order object.
+
 
 ---
 
-## 🔒 Common Responses & Security
+## 6. Admin Dashboard & Metrics (`/admin`)
 
-- **401 Unauthorized**: JWT token is missing or expired.
-- **403 Forbidden**: You are trying to access an Admin route with a User account.
-- **Stock Validation**: Orders will fail with a `400` error if stock for the selected variant is insufficient.
-- **Secure ID Tracking**: Orders automatically track both the `product ID` and the specific `variant ID` bought, ensuring accurate inventory management.
+### 6.1 Dashboard Statistics Overview
+- **Method:** `GET`
+- **Path:** `/admin/dashboard`
+- **Auth:** Required (Admin Only)
+- **Sample Response (200 OK):**
+  ```json
+  {
+    "overview": {
+      "totalProducts": 105,
+      "totalOrders": 32,
+      "totalUsers": 210,
+      "totalRevenue": 450000
+    },
+    "orders": {
+      "byStatus": [ { "status": "Delivered", "count": 20 }, ... ],
+      "byPaymentStatus": [...],
+      "byPaymentMethod": [...]
+    },
+    "recentOrders": [...],
+    "lowStockProducts": [...],
+    "topSellingProducts": [...]
+  }
+  ```
+
+### 6.2 Get Customers List
+- **Method:** `GET`
+- **Path:** `/admin/customers`
+- **Auth:** Required (Admin Only)
+- **Sample Response (200 OK):** Returns total users filtered by `role: user` and an aggregated `orderCount` field sorted descending.
+
+### 6.3 Get Specific Customer's Orders
+- **Method:** `GET`
+- **Path:** `/admin/customer-orders/:userId`
+- **Auth:** Required (Admin Only)
+- **Sample Response (200 OK):** Array of all orders for the target `userId`.
+
+### 6.4 Get System Settings
+- **Method:** `GET`
+- **Path:** `/admin/settings`
+- **Auth:** Required (Admin Only)
+- **Sample Response (200 OK):**
+  ```json
+  { "isEmailEnabled": true }
+  ```
+
+### 6.5 Update Global Email Setting
+- **Method:** `PUT`
+- **Path:** `/admin/settings/email`
+- **Auth:** Required (Admin Only)
+- **Format:** `multipart/form-data`
+- **Body Data:**
+  ```json
+  { "isEmailEnabled": false }
+  ```
+- **Sample Response (200 OK):** Returns updated settings config.
 
 ---
+
+## 7. Newsletter Subscriptions (`/subscribe`)
+
+### 7.1 Join Newsletter
+- **Method:** `POST`
+- **Path:** `/subscribe`
+- **Body Data:**
+  ```json
+  { "email": "john@example.com" }
+  ```
+- **Description:** Validates and saves the subscriber to the database and sends a warm welcome email to the user.
+- **Sample Response (200 OK):**
+  ```json
+  { "success": true, "message": "Subscribed successfully! Check your email for a warm welcome." }
+  ```
+
+---
+
+## 🔒 Error Codes
+- **400 Bad Request:** Missing fields, stock running low, or invalid JSON.
+- **401 Unauthorized:** Invalid, missing, or expired JWT Token.
+- **403 Forbidden:** Valid user missing Administrator privileges.
+- **404 Not Found:** Resource missing.
+- **500 Internal Error:** Server crashes.
 
 **Happy Coding! 🚀**

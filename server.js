@@ -33,8 +33,14 @@ app.use("/order", orderRoute)
 const categoryRoute = require('./routes/categoryRoute')
 app.use("/api/categories", categoryRoute)
 
+const promoRoute = require('./routes/promoRoute')
+app.use("/promo", promoRoute)
+
 const adminRoute = require('./routes/adminRoute')
 app.use("/admin", adminRoute)
+
+const subscriberRoute = require('./routes/subscriberRoute')
+app.use("/subscribe", subscriberRoute)
 
 
 

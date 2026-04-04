@@ -152,6 +152,37 @@ router.get('/thumbnail/trending', async (req, res) => {
 });
 
 
+// POST /thumbnail/batch - Fetch thumbnails for multiple product IDs (e.g., for Cart or Recent View)
+router.post('/thumbnail/batch', async (req, res) => {
+  try {
+    const { ids } = req.body;
+
+    if (!ids || !Array.isArray(ids)) {
+      return res.status(400).json({ error: 'ids array is required' });
+    }
+
+    const products = await Product.find({ _id: { $in: ids } })
+      .select('name brand images price discountPrice createdAt')
+      .lean();
+
+    // Optionally sort the results to match the order of IDs passed
+    const productsMap = products.reduce((acc, p) => {
+      acc[p._id.toString()] = p;
+      return acc;
+    }, {});
+
+    const orderedProducts = ids
+      .map(id => productsMap[id.toString()])
+      .filter(p => p !== undefined);
+
+    res.json(orderedProducts);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
 // GET /thumbnail - returning only name, brand, images, price, and discountPrice with pagination & sorting
 router.get('/thumbnail', async (req, res) => {
   try {
@@ -247,18 +278,82 @@ router.get('/wishlist/remove/:id', authMiddleware, async (req, res) => {
 });
 
 
-//  to Get single product
-router.get('/:id', async (req, res) => {
+// GET /search - Search products by name, brand, or category name
+router.get('/search', async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id).populate('category', 'name slug').lean();
-    if (!product) return res.status(404).json({ error: 'Not found' });
+    const { q, page = 1, limit = 10 } = req.query;
 
-    res.json(product);
+    if (!q) {
+      return res.status(400).json({ error: 'Search query is required' });
+    }
+
+    const searchQuery = new RegExp(q, 'i');
+
+    const products = await Product.aggregate([
+      {
+        $lookup: {
+          from: 'categories',
+          localField: 'category',
+          foreignField: '_id',
+          as: 'categoryDetails'
+        }
+      },
+      {
+        $match: {
+          $or: [
+            { name: searchQuery },
+            { brand: searchQuery },
+            { 'categoryDetails.name': searchQuery }
+          ]
+        }
+      },
+      {
+        $project: {
+          name: 1,
+          brand: 1,
+          images: 1,
+          price: 1,
+          discountPrice: 1,
+          category: { $arrayElemAt: ['$categoryDetails', 0] }
+        }
+      },
+      { $skip: (Number(page) - 1) * Number(limit) },
+      { $limit: Number(limit) }
+    ]);
+
+    const total = await Product.aggregate([
+      {
+        $lookup: {
+          from: 'categories',
+          localField: 'category',
+          foreignField: '_id',
+          as: 'categoryDetails'
+        }
+      },
+      {
+        $match: {
+          $or: [
+            { name: searchQuery },
+            { brand: searchQuery },
+            { 'categoryDetails.name': searchQuery }
+          ]
+        }
+      },
+      { $count: 'total' }
+    ]);
+
+    res.json({
+      products,
+      total: total.length > 0 ? total[0].total : 0,
+      page: Number(page),
+      limit: Number(limit)
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
   }
 });
+
 // GET /similar/:id - Returning similar products based on the current product's category
 router.get('/similar/:id', async (req, res) => {
   try {
@@ -281,6 +376,19 @@ router.get('/similar/:id', async (req, res) => {
       .lean();
 
     res.json(similarProducts);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+//  to Get single product
+router.get('/:id', async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id).populate('category', 'name slug').lean();
+    if (!product) return res.status(404).json({ error: 'Not found' });
+
+    res.json(product);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });

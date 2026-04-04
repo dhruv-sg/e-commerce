@@ -25,18 +25,42 @@ const getRazorpayInstance = () => {
 // Create new order
 router.post('/', authMiddleware, async (req, res) => {
   try {
-    const { orderItems, shippingAddress, paymentMethod } = req.body;
+    const { orderItems, shippingAddress, paymentMethod, promoCode, pendingOrderId } = req.body;
 
     console.log(`--- New Order Request ---`);
     console.log(`Payment Method: ${paymentMethod}`);
+    console.log(`Promo Code: ${promoCode || 'None'}`);
     console.log(`Auth User: ${req.user ? req.user.email : 'None'}`);
 
     if (!orderItems || orderItems.length === 0) {
       return res.status(400).json({ error: 'No order items' });
     }
 
+    // --- HANDLE ABANDONED ONLINE PAYMENT ORDERS ---
+
+    // 1. If frontend explicitly passes the old pending order ID, delete it
+    if (pendingOrderId) {
+      const mongoose = require('mongoose');
+      if (mongoose.isValidObjectId(pendingOrderId)) {
+        await Order.deleteOne(
+          { _id: pendingOrderId, user: req.user.id, status: 'PENDING_PAYMENT' }
+        );
+        console.log(`Deleted stale pending order: ${pendingOrderId}`);
+      }
+    }
+
+    // 2. Auto-cleanup: delete any PENDING_PAYMENT orders from this user older than 30 minutes
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+    await Order.deleteMany(
+      {
+        user: req.user.id,
+        status: 'PENDING_PAYMENT',
+        createdAt: { $lt: thirtyMinutesAgo }
+      }
+    );
+
     const finalItems = [];
-    let calculatedTotal = 0;
+    let subTotal = 0;
 
     for (const item of orderItems) {
       const product = await Product.findById(item.product);
@@ -48,11 +72,9 @@ router.post('/', authMiddleware, async (req, res) => {
       let variantId = item.variant || product._id;
       let selectedVariant = null;
 
-      // 1. Try finding by explicit variant ID first
       if (item.variant && item.variant.toString() !== product._id.toString()) {
         selectedVariant = product.variants.find(v => v._id.toString() === item.variant.toString());
       }
-      // 2. Fallback to color/size matching if ID not provided or not found
       else if (item.color || item.size) {
         selectedVariant = product.variants.find(v =>
           (!item.color || v.color === item.color) &&
@@ -63,7 +85,7 @@ router.post('/', authMiddleware, async (req, res) => {
       if (selectedVariant) {
         variantId = selectedVariant._id;
         if (selectedVariant.stock < item.quantity) {
-          return res.status(400).json({ error: `Not enough stock for ${product.name} (${selectedVariant.color || ''} ${selectedVariant.size || ''})` });
+          return res.status(400).json({ error: `Not enough stock for ${product.name}` });
         }
         itemPrice = selectedVariant.discountPrice || selectedVariant.price || itemPrice;
         if (selectedVariant.images && selectedVariant.images.length > 0) {
@@ -72,7 +94,6 @@ router.post('/', authMiddleware, async (req, res) => {
       } else if (product.variants.length > 0 && (item.variant || item.color || item.size)) {
         return res.status(400).json({ error: `Specific variant not found for ${product.name}` });
       } else {
-        // No variant selected/found, check global stock
         if (product.stock < item.quantity) {
           return res.status(400).json({ error: `Not enough stock for ${product.name}` });
         }
@@ -89,15 +110,68 @@ router.post('/', authMiddleware, async (req, res) => {
         quantity: item.quantity
       });
 
-      calculatedTotal += itemPrice * item.quantity;
+      subTotal += itemPrice * item.quantity;
     }
+
+    // --- PROMO CODE LOGIC ---
+    let discountAmount = 0;
+    let appliedPromoCode = null;
+
+    if (promoCode) {
+      const PromoCode = require('../models/promoCodeModel');
+      const promo = await PromoCode.findOne({ code: promoCode.toUpperCase(), isActive: true });
+
+      if (promo) {
+        const now = new Date();
+        const isDateValid = now >= promo.startDate && now <= promo.expiryDate;
+        const reachedUsageLimit = promo.usageLimit && promo.usedCount >= promo.usageLimit;
+        const userUsage = promo.usersUsed.find(u => u.user.toString() === req.user.id.toString());
+        const reachedPerUserLimit = userUsage && userUsage.count >= promo.perUserLimit;
+
+        if (isDateValid && !reachedUsageLimit && !reachedPerUserLimit && subTotal >= promo.minOrderAmount) {
+
+          // Calculate eligible subtotal (only restricted items, or full cart if no restrictions)
+          const hasRestrictions = promo.applicableProducts.length > 0 || promo.applicableCategories.length > 0;
+          let eligibleSubtotal = subTotal;
+
+          if (hasRestrictions) {
+            eligibleSubtotal = 0;
+            for (const item of finalItems) {
+              const isProductMatch = promo.applicableProducts.some(
+                p => p.toString() === item.product.toString()
+              );
+              // item.category not stored on order items, match by product only here
+              if (isProductMatch) {
+                eligibleSubtotal += item.price * item.quantity;
+              }
+            }
+          }
+
+          // Discount applied only to eligible subtotal
+          if (promo.discountType === 'percentage') {
+            discountAmount = eligibleSubtotal * (promo.discountValue / 100);
+            if (promo.maxDiscount && discountAmount > promo.maxDiscount) {
+              discountAmount = promo.maxDiscount;
+            }
+          } else {
+            discountAmount = Math.min(promo.discountValue, eligibleSubtotal);
+          }
+          appliedPromoCode = promo.code;
+        }
+      }
+    }
+
+    const finalTotal = Math.max(0, subTotal - discountAmount);
 
     const order = new Order({
       user: req.user.id,
       items: finalItems,
       shippingAddress,
       paymentMethod,
-      total: calculatedTotal,
+      subTotal: subTotal,
+      discountAmount: discountAmount,
+      promoCode: appliedPromoCode,
+      total: finalTotal,
       status: paymentMethod === 'Online' ? 'PENDING_PAYMENT' : 'Processing',
       paymentStatus: 'UNPAID'
     });
@@ -105,7 +179,7 @@ router.post('/', authMiddleware, async (req, res) => {
     // 1. Create Razorpay Order if payment method is Online
     if (paymentMethod === 'Online') {
       const options = {
-        amount: calculatedTotal * 100, // Razorpay works in paise
+        amount: Math.round(finalTotal * 100), // Use final total
         currency: "INR",
         receipt: `receipt_${Date.now()}`,
       };
@@ -115,6 +189,23 @@ router.post('/', authMiddleware, async (req, res) => {
     }
 
     const createdOrder = await order.save();
+
+    // Update Promo Stats — only for COD (confirmed immediately)
+    // For Online, we update after successful payment verification to prevent quota loss on abandoned payments
+    if (appliedPromoCode && paymentMethod === 'COD') {
+      const PromoCode = require('../models/promoCodeModel');
+      const promo = await PromoCode.findOne({ code: appliedPromoCode });
+      if (promo) {
+          promo.usedCount += 1;
+          const userIdx = promo.usersUsed.findIndex(u => u.user.toString() === req.user.id.toString());
+          if (userIdx > -1) {
+              promo.usersUsed[userIdx].count += 1;
+          } else {
+              promo.usersUsed.push({ user: req.user.id, count: 1 });
+          }
+          await promo.save();
+      }
+    }
 
     // Send confirmation email for COD
     if (paymentMethod === 'COD') {
@@ -180,7 +271,7 @@ router.post('/verify-payment', authMiddleware, async (req, res) => {
         console.error("Failed to send Online confirmation email:", emailErr);
       }
 
-      // 3. Update stock after successful payment
+      // Update stock after successful payment
       for (const item of order.items) {
         if (item.product.toString() !== item.variant.toString()) {
           await Product.updateOne(
@@ -189,6 +280,27 @@ router.post('/verify-payment', authMiddleware, async (req, res) => {
           );
         } else {
           await Product.findByIdAndUpdate(item.product, { $inc: { stock: -item.quantity } });
+        }
+      }
+
+      // Update Promo Stats for Online payment — only now that payment is confirmed
+      if (order.promoCode) {
+        try {
+          const PromoCode = require('../models/promoCodeModel');
+          const promo = await PromoCode.findOne({ code: order.promoCode });
+          if (promo) {
+            promo.usedCount += 1;
+            const userId = order.user.toString();
+            const userIdx = promo.usersUsed.findIndex(u => u.user.toString() === userId);
+            if (userIdx > -1) {
+              promo.usersUsed[userIdx].count += 1;
+            } else {
+              promo.usersUsed.push({ user: order.user, count: 1 });
+            }
+            await promo.save();
+          }
+        } catch (promoErr) {
+          console.error('Failed to update promo stats after payment:', promoErr);
         }
       }
 
