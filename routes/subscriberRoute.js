@@ -21,21 +21,14 @@ router.post('/', async (req, res) => {
         const newSubscriber = new Subscriber({ email });
         await newSubscriber.save();
 
+        const { Settings } = require('../models/settingsModel');
+        const settings = await Settings.findOne();
+        const brandName = settings?.brandName || "Yogi Fashion";
+
         // Send a "Thank You" email
         try {
-            const welcomeHtml = `
-                <div style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 40px; text-align: center;">
-                    <div style="background-color: #ffffff; padding: 30px; border-radius: 8px; display: inline-block; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
-                        <h1 style="color: #004d40;">Experience brilliance.</h1>
-                        <p style="font-size: 16px; color: #555;">Thank you for joining <strong>Yogi Fashion</strong>.</p>
-                        <p style="font-size: 14px; color: #777; margin-bottom: 20px;">You are now part of our inner circle and will receive priority access to our signature collections and exclusive launch events.</p>
-                        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-                        <p style="font-size: 12px; color: #999;">If you didn't subscribe to this newsletter, you can safely ignore this email.</p>
-                        <p style="font-size: 14px; font-weight: bold; color: #333; margin-top: 20px;">Stay tuned for more!</p>
-                    </div>
-                </div>
-            `;
-            await sendEmail(email, 'Welcome to Yogi Fashion! ✨', welcomeHtml);
+            const { welcomeNewsletterTemplate } = require('../utils/emailTemplates');
+            await sendEmail(email, `Welcome to ${brandName}! ✨`, welcomeNewsletterTemplate(settings));
         } catch (emailErr) {
             console.error("Welcome email failed to send:", emailErr);
             // We don't return an error here so that the subscription still "works" database-wise

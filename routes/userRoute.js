@@ -244,12 +244,13 @@ router.post('/forgot-password', async (req, res) => {
         const user = await User.findOne({ email });
         if (!user) return res.status(404).json({ error: "User not found with this email" });
 
-        // Check if global email service is enabled
         const { Settings } = require('../models/settingsModel');
         const settings = await Settings.findOne();
         if (settings && !settings.isEmailEnabled) {
             return res.status(503).json({ error: "Email service is temporarily off. Please contact support or try again later." });
         }
+
+        const brandName = settings?.brandName || "Yogi Fashion";
 
         // Generate 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -260,7 +261,7 @@ router.post('/forgot-password', async (req, res) => {
         const { sendEmail } = require('../utils/emailService');
         const { otpTemplate } = require('../utils/emailTemplates');
 
-        await sendEmail(email, 'Password Reset OTP - Yogi Fashion', otpTemplate(otp));
+        await sendEmail(email, `Password Reset OTP - ${brandName}`, otpTemplate(otp, settings));
         
         res.json({ message: "OTP sent to your email successfully" });
 

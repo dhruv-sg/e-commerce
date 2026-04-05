@@ -210,7 +210,10 @@ router.post('/', authMiddleware, async (req, res) => {
     // Send confirmation email for COD
     if (paymentMethod === 'COD') {
       try {
-        await sendEmail(req.user.email, 'Order Confirmed! 🎉 - Yogi Fashion', orderConfirmationTemplate(createdOrder));
+        const { Settings } = require('../models/settingsModel');
+        const settings = await Settings.findOne();
+        const brandName = settings?.brandName || "Yogi Fashion";
+        await sendEmail(req.user.email, `Order Confirmed! 🎉 - ${brandName}`, orderConfirmationTemplate(order, settings));
       } catch (emailErr) {
         console.error("Failed to send COD confirmation email:", emailErr);
       }
@@ -265,8 +268,10 @@ router.post('/verify-payment', authMiddleware, async (req, res) => {
 
       // Send confirmation email after payment verified
       try {
-        // Need to ensure req.user.email is available or fetch it
-        await sendEmail(req.user.email, 'Payment Received & Order Confirmed! 🎉 - Yogi Fashion', orderConfirmationTemplate(order));
+        const { Settings } = require('../models/settingsModel');
+        const settings = await Settings.findOne();
+        const brandName = settings?.brandName || "Yogi Fashion";
+        await sendEmail(req.user.email, `Payment Received & Order Confirmed! 🎉 - ${brandName}`, orderConfirmationTemplate(order, settings));
       } catch (emailErr) {
         console.error("Failed to send Online confirmation email:", emailErr);
       }
@@ -329,11 +334,36 @@ router.get('/myorders', authMiddleware, async (req, res) => {
   }
 });
 
-// Admin: Get all orders
+// Admin: Get all orders with pagination and filtering
 router.get('/admin/all', authMiddleware, adminOnly, async (req, res) => {
   try {
-    const orders = await Order.find().populate('user', 'name email').sort({ createdAt: -1 });
-    res.json(orders);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const { status, paymentMethod } = req.query;
+    const query = {};
+
+    if (status) query.status = status;
+    if (paymentMethod) query.paymentMethod = paymentMethod;
+
+    const [orders, totalOrders] = await Promise.all([
+      Order.find(query)
+        .populate('user', 'name email')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Order.countDocuments(query)
+    ]);
+
+    res.json({
+      orders,
+      totalOrders,
+      currentPage: page,
+      totalPages: Math.ceil(totalOrders / limit),
+      limit
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
@@ -404,7 +434,10 @@ router.put('/status', authMiddleware, adminOnly, async (req, res) => {
     // Send status update email
     if (status) {
       try {
-        await sendEmail(order.user.email, `Order Status Update: ${status} - Yogi Fashion`, orderStatusUpdateTemplate(order, status));
+        const { Settings } = require('../models/settingsModel');
+        const settings = await Settings.findOne();
+        const brandName = settings?.brandName || "Yogi Fashion";
+        await sendEmail(order.user.email, `Order Status Update: ${status} - ${brandName}`, orderStatusUpdateTemplate(order, status, settings));
       } catch (emailErr) {
         console.error("Failed to send status update email:", emailErr);
       }

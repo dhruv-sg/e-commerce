@@ -531,11 +531,25 @@ Get a paginated list of products matching a search query (checks name, brand, an
 - **Auth:** Required (Must be Admin or the owner of the order)
 - **Sample Response (200 OK):** Returns order with populated `user.name` and `user.email`.
 
-### 5.6 Admin: Get All Orders
+### 5.6 Admin: Get All Orders (Paginated & Filtered)
 - **Method:** `GET`
-- **Path:** `/order/admin/all`
+- **Path:** `/order/admin/all?page=1&limit=10&status=Shipped&paymentMethod=COD`
 - **Auth:** Required (Admin Only)
-- **Sample Response (200 OK):** Array of every order in the system.
+- **Query Params:**
+- `page`: Default 1
+- `limit`: Default 10
+- `status`: Optional (e.g., `Processing`, `Shipped`, `Delivered`, `Cancelled`)
+- `paymentMethod`: Optional (`COD` or `Online`)
+- **Sample Response (200 OK):**
+- ```json
+- {
+-   "orders": [ /* array of order objects matching filters */ ],
+-   "totalOrders": 150,
+-   "currentPage": 1,
+-   "totalPages": 15,
+-   "limit": 10
+- }
+- ```
 
 ### 5.7 Admin: Update Order Status
 - **Method:** `PUT`
@@ -613,6 +627,36 @@ Get a paginated list of products matching a search query (checks name, brand, an
   ```
 - **Sample Response (200 OK):** Returns updated settings config.
 
+### 6.6 Update Business Details (for Emails/Invoices)
+- **Method:** `PUT`
+- **Path:** `/admin/settings/business`
+- **Auth:** Required (Admin Only)
+- **Format:** `multipart/form-data`
+- **Body Data:**
+  ```json
+  {
+    "brandName": "Yogi Fashion",
+    "address": "123, Luxury Tower, Mumbai",
+    "gstin": "27AAAAA0000A1Z5",
+    "mobileNumber": "919876543210"
+  }
+  ```
+- **Sample Response (200 OK):** Returns updated settings.
+
+### 6.7 Get Business Info (Public)
+- **Method:** `GET`
+- **Path:** `/admin/business-info`
+- **Description:** Returns non-sensitive business data for frontend contact pages.
+- **Sample Response (200 OK):**
+  ```json
+  {
+    "brandName": "...",
+    "address": "...",
+    "gstin": "...",
+    "mobileNumber": "..."
+  }
+  ```
+
 ---
 
 ## 7. Newsletter Subscriptions (`/subscribe`)
@@ -629,6 +673,56 @@ Get a paginated list of products matching a search query (checks name, brand, an
   ```json
   { "success": true, "message": "Subscribed successfully! Check your email for a warm welcome." }
   ```
+
+---
+
+## 8. Hero Section (`/hero`)
+
+### 8.1 Get Active Slides (for frontend)
+- **Method:** `GET`
+- **Path:** `/hero`
+- **Description:** Returns an array of all active hero section slides sorted by newest first.
+- **Sample Response (200 OK):**
+  ```json
+  [
+    {
+      "_id": "...",
+      "title": "Luxury Streetwear",
+      "subtitle": "Discover the new collection",
+      "image": "url_to_cloudinary"
+    }
+  ]
+  ```
+
+### 8.2 Admin: Manage Slides (GET All)
+- **Method:** `GET`
+- **Path:** `/hero/admin`
+- **Auth:** Required (Admin Only)
+- **Description:** returns all slides including inactive ones.
+
+### 8.3 Admin: Create Slide
+- **Method:** `POST`
+- **Path:** `/hero/admin`
+- **Auth:** Required (Admin Only)
+- **Format:** `multipart/form-data`
+- **Body Data:**
+  - `title`: String
+  - `subtitle`: String
+  - `image`: File
+- **Sample Response (201 Created):** Newly created hero object.
+
+### 8.4 Admin: Update Slide
+- **Method:** `PUT`
+- **Path:** `/hero/admin/:id`
+- **Auth:** Required (Admin Only)
+- **Format:** `multipart/form-data`
+- **Body Data:** `title`, `subtitle`, `isActive`, `image` (All Optional)
+
+### 8.5 Admin: Delete Slide
+- **Method:** `DELETE`
+- **Path:** `/hero/admin/:id`
+- **Auth:** Required (Admin Only)
+- **Sample Response (200 OK):** `{ "message": "Hero slide deleted successfully" }`
 
 ---
 

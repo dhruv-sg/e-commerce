@@ -1,4 +1,9 @@
-const emailBoilerplate = (title, content) => `
+const emailBoilerplate = (title, content, settings) => {
+    const brandName = settings?.brandName || "Yogi Fashion";
+    const address = settings?.address || "123 Fashion Street, Mumbai, Maharashtra 400001";
+    const mobileNumber = settings?.mobileNumber || "+91-9876543210";
+
+    return `
 <!DOCTYPE html>
 <html>
 <head>
@@ -20,7 +25,7 @@ const emailBoilerplate = (title, content) => `
                     <!-- Header -->
                     <tr>
                         <td align="center" style="padding: 40px 0; background-color: #ffffff;">
-                            <span style="font-size: 24px; font-weight: 700; color: #0a3d30; letter-spacing: 1px; text-transform: uppercase; font-family: 'Times New Roman', serif;">Yogi Fashion</span>
+                            <span style="font-size: 24px; font-weight: 700; color: #0a3d30; letter-spacing: 1px; text-transform: uppercase; font-family: 'Times New Roman', serif;">${brandName}</span>
                         </td>
                     </tr>
                     <!-- Body Content -->
@@ -29,10 +34,13 @@ const emailBoilerplate = (title, content) => `
                     <tr>
                         <td style="padding: 40px; background-color: #f5f1e8; text-align: center; border-top: 1px solid #e5e0d5;">
                             <p style="margin: 0; font-size: 13px; color: #1a1a1a; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">
-                                &copy; 2026 Yogi Fashion. All rights reserved.
+                                &copy; 2026 ${brandName}. All rights reserved.
                             </p>
                             <p style="margin: 10px 0 0 0; font-size: 12px; color: #666666;">
-                                High Quality Fashion for Your Lifestyle
+                                ${address}
+                            </p>
+                            <p style="margin: 5px 0 0 0; font-size: 11px; color: #999;">
+                                Support: ${mobileNumber}
                             </p>
                             <div style="margin-top: 25px;">
                                 <a href="#" style="text-decoration: none; color: #0a3d30; font-size: 12px; margin: 0 15px; font-weight: 600;">Shop</a>
@@ -48,14 +56,16 @@ const emailBoilerplate = (title, content) => `
 </body>
 </html>
 `;
+};
 
-exports.otpTemplate = (otp) => {
+exports.otpTemplate = (otp, settings) => {
+    const brandName = settings?.brandName || "Yogi Fashion";
     const content = `
     <tr>
         <td class="content" style="padding: 40px; color: #1a1a1a;">
             <h1 style="margin: 0 0 20px 0; font-size: 22px; font-weight: 700; text-align: center; text-transform: uppercase; color: #0a3d30;">Reset Your Password</h1>
             <p style="margin: 0 0 30px 0; font-size: 15px; line-height: 1.6; text-align: center; color: #4b5563;">
-                We received a request to reset your password. Use the verification code below to proceed.
+                We received a request to reset your password for ${brandName}. Use the verification code below to proceed.
             </p>
             <div style="background-color: #f9f9f9; border: 1px solid #0a3d30; padding: 25px; text-align: center;">
                 <span style="font-size: 32px; font-weight: 800; letter-spacing: 12px; color: #0a3d30;">${otp}</span>
@@ -72,10 +82,14 @@ exports.otpTemplate = (otp) => {
         </td>
     </tr>
     `;
-    return emailBoilerplate('Reset Your Password', content);
+    return emailBoilerplate('Reset Your Password', content, settings);
 };
 
-exports.orderConfirmationTemplate = (order) => {
+exports.orderConfirmationTemplate = (order, settings) => {
+    const brandName = settings?.brandName || "Yogi Fashion";
+    const businessAddress = settings?.address || "123 Fashion Street, Mumbai, Maharashtra 400001";
+    const gstin = settings?.gstin || "";
+
     const productRows = order.items.map(item => `
         <tr>
             <td style="padding: 15px 0; border-bottom: 1px solid #f1f1f1;">
@@ -92,7 +106,7 @@ exports.orderConfirmationTemplate = (order) => {
     <tr>
         <td class="content" style="padding: 40px; color: #1a1a1a;">
             <h1 style="margin: 0 0 12px 0; font-size: 22px; font-weight: 700; color: #0a3d30; text-transform: uppercase;">Order Confirmed 🎉</h1>
-            <p style="margin: 0 0 30px 0; font-size: 15px; color: #4b5563; line-height: 1.6;">Thank you for your purchase from Yogi Fashion. We've received your order and are getting it ready for shipment.</p>
+            <p style="margin: 0 0 30px 0; font-size: 15px; color: #4b5563; line-height: 1.6;">Thank you for your purchase from ${brandName}. We've received your order and are getting it ready for shipment.</p>
             
             <div style="background-color: #ffffff; border: 1px solid #e5e0d5; padding: 25px; margin-bottom: 30px;">
                 <p style="margin: 0 0 20px 0; font-size: 12px; color: #666666; text-transform: uppercase; letter-spacing: 2px; font-weight: 700; border-bottom: 2px solid #0a3d30; display: inline-block; padding-bottom: 4px;">Order ID: #${order._id.toString().slice(-6).toUpperCase()}</p>
@@ -106,14 +120,23 @@ exports.orderConfirmationTemplate = (order) => {
                 </table>
             </div>
 
-            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 40px;">
+            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 30px; border-collapse: separate; border-spacing: 0 10px;">
                 <tr>
-                    <td style="background-color: #f9f9f9; padding: 25px; border-left: 4px solid #0a3d30;">
-                        <h3 style="margin: 0 0 12px 0; font-size: 13px; font-weight: 700; color: #0a3d30; text-transform: uppercase; letter-spacing: 1px;">Delivery To:</h3>
-                        <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #1a1a1a;">
+                    <td style="background-color: #f9f9f9; padding: 20px; border-left: 4px solid #0a3d30; width: 48%;">
+                        <h3 style="margin: 0 0 12px 0; font-size: 11px; font-weight: 700; color: #0a3d30; text-transform: uppercase; letter-spacing: 1px;">Ship From:</h3>
+                        <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #1a1a1a;">
+                            <strong>${brandName}</strong><br>
+                            ${businessAddress}<br>
+                            ${gstin ? `GSTIN: ${gstin}` : ''}
+                        </p>
+                    </td>
+                    <td style="width: 4%;"></td>
+                    <td style="background-color: #f9f9f9; padding: 20px; border-left: 4px solid #4b5563; width: 48%;">
+                        <h3 style="margin: 0 0 12px 0; font-size: 11px; font-weight: 700; color: #4b5563; text-transform: uppercase; letter-spacing: 1px;">Ship To:</h3>
+                        <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #1a1a1a;">
                             <strong>${order.shippingAddress.street}</strong><br>
                             ${order.shippingAddress.city}, ${order.shippingAddress.state} - ${order.shippingAddress.zip}<br>
-                            Phone: ${order.shippingAddress.phone}
+                            Ph: ${order.shippingAddress.phone}
                         </p>
                     </td>
                 </tr>
@@ -125,10 +148,11 @@ exports.orderConfirmationTemplate = (order) => {
         </td>
     </tr>
     `;
-    return emailBoilerplate('Order Confirmed', content);
+    return emailBoilerplate('Order Confirmed', content, settings);
 };
 
-exports.orderStatusUpdateTemplate = (order, status) => {
+exports.orderStatusUpdateTemplate = (order, status, settings) => {
+    const brandName = settings?.brandName || "Yogi Fashion";
     let statusEmoji = '🚚';
     let statusColor = '#0a3d30';
     if (status === 'Delivered') { statusEmoji = '✨'; statusColor = '#0a3d30'; }
@@ -138,7 +162,7 @@ exports.orderStatusUpdateTemplate = (order, status) => {
     <tr>
         <td class="content" style="padding: 40px; color: #1a1a1a;">
             <h1 style="margin: 0 0 12px 0; font-size: 22px; font-weight: 700; color: ${statusColor}; text-transform: uppercase;">Order Update ${statusEmoji}</h1>
-            <p style="margin: 0 0 35px 0; font-size: 15px; color: #4b5563; line-height: 1.6;">Hello, we have an update on your Yogi Fashion order status.</p>
+            <p style="margin: 0 0 35px 0; font-size: 15px; color: #4b5563; line-height: 1.6;">Hello, we have an update on your ${brandName} order status.</p>
             
             <div style="border: 1px solid #e5e0d5; padding: 30px; margin-bottom: 35px; text-align: center; background-color: #ffffff;">
                 <p style="margin: 0 0 15px 0; font-size: 12px; color: #666666; letter-spacing: 1px; text-transform: uppercase;">Order ID: #${order._id.toString().slice(-6).toUpperCase()}</p>
@@ -159,5 +183,29 @@ exports.orderStatusUpdateTemplate = (order, status) => {
         </td>
     </tr>
     `;
-    return emailBoilerplate(`Order ${status}`, content);
+    return emailBoilerplate(`Order ${status}`, content, settings);
+};
+
+exports.welcomeNewsletterTemplate = (settings) => {
+    const brandName = settings?.brandName || "Yogi Fashion";
+    const content = `
+    <tr>
+        <td class="content" style="padding: 40px; color: #1a1a1a; text-align: center;">
+            <h1 style="margin: 0 0 20px 0; font-size: 24px; font-weight: 700; color: #0a3d30; text-transform: uppercase; font-family: 'Times New Roman', serif;">Experience Brilliance</h1>
+            <p style="margin: 0 0 25px 0; font-size: 16px; color: #4b5563; line-height: 1.6;">
+                Thank you for joining <strong>${brandName}</strong>.
+            </p>
+            <p style="margin: 0 0 35px 0; font-size: 14px; color: #666666; line-height: 1.6;">
+                You are now part of our inner circle and will receive priority access to our signature collections and exclusive launch events.
+            </p>
+            <div style="text-align: center; margin-bottom: 20px;">
+                <a href="#" style="display: inline-block; padding: 15px 40px; background-color: #0a3d30; color: #ffffff; text-decoration: none; font-weight: 700; border-radius: 0; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Visit Store</a>
+            </div>
+            <p style="margin: 40px 0 0 0; font-size: 12px; color: #999999; border-top: 1px solid #f1f1f1; padding-top: 20px;">
+                You're receiving this because you subscribed to our newsletter at ${brandName}.
+            </p>
+        </td>
+    </tr>
+    `;
+    return emailBoilerplate(`Welcome to ${brandName}`, content, settings);
 };

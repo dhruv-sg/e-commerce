@@ -42,6 +42,9 @@ app.use("/admin", adminRoute)
 const subscriberRoute = require('./routes/subscriberRoute')
 app.use("/subscribe", subscriberRoute)
 
+const heroRoute = require('./routes/heroRoute')
+app.use("/hero", heroRoute)
+
 
 
 app.listen(PORT, (req, res) => {

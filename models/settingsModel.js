@@ -5,6 +5,23 @@ const settingsSchema = new mongoose.Schema({
     isEmailEnabled: {
         type: Boolean,
         default: true
+    },
+    // Business Metadata for Emails/Invoices
+    brandName: {
+        type: String,
+        default: "Yogi Fashion"
+    },
+    address: {
+        type: String,
+        default: "123 Fashion Street, Mumbai, Maharashtra 400001"
+    },
+    gstin: {
+        type: String,
+        default: ""
+    },
+    mobileNumber: {
+        type: String,
+        default: "+91-9876543210"
     }
 }, { timestamps: true });
 

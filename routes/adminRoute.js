@@ -4,6 +4,7 @@ const { adminOnly, authMiddleware } = require('../auth');
 const Order = require('../models/orderModel');
 const Product = require('../models/productModel');
 const User = require('../models/userModel');
+const { upload } = require('../config/cloudinary');
 
 // GET /admin/dashboard
 router.get('/dashboard', authMiddleware, adminOnly, async (req, res) => {
@@ -179,7 +180,7 @@ router.get('/settings', authMiddleware, adminOnly, async (req, res) => {
 });
 
 // PUT /admin/settings/email - Toggle global email service
-router.put('/settings/email', authMiddleware, adminOnly, async (req, res) => {
+router.put('/settings/email', authMiddleware, adminOnly, upload.none(), async (req, res) => {
     try {
         const { isEmailEnabled } = req.body;
         if (typeof isEmailEnabled !== 'boolean') {
@@ -189,6 +190,34 @@ router.put('/settings/email', authMiddleware, adminOnly, async (req, res) => {
         const settings = await Settings.findOneAndUpdate({}, { isEmailEnabled }, { new: true, upsert: true });
         res.json(settings);
         console.log(`Global Email Service sets to: ${isEmailEnabled}`);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /admin/business-info - Public route to get business details for frontend footer/contact
+router.get('/business-info', async (req, res) => {
+    try {
+        const settings = await Settings.findOne().select('brandName address gstin mobileNumber');
+        res.json(settings);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// PUT /admin/settings/business - Update Brand/Business details (Admin Only)
+router.put('/settings/business', authMiddleware, adminOnly, upload.none(), async (req, res) => {
+    try {
+        const { brandName, address, gstin, mobileNumber } = req.body;
+        const update = {};
+        if (brandName) update.brandName = brandName;
+        if (address) update.address = address;
+        if (gstin !== undefined) update.gstin = gstin;
+        if (mobileNumber) update.mobileNumber = mobileNumber;
+
+        const settings = await Settings.findOneAndUpdate({}, { $set: update }, { new: true, upsert: true });
+        res.json(settings);
+        console.log("Business Settings Updated");
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
