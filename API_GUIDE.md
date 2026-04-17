@@ -284,11 +284,96 @@ Get a paginated list of products matching a search query (checks name, brand, an
 ### 2.11 Admin: Create Product
 - **Method:** `POST`
 - **Path:** `/product`
-- **Auth:** Required (Admin Only)
+- **Auth:** `Required (Admin Only)`
 - **Format:** `multipart/form-data`
-- **Body Data:** Complex form-data supporting attributes (`name`, `description`, `price`), and global images via `images` key.
-  - Supports variants formatted correctly like `V1_color="Red"`, `V1_price=200`, `V1_images=File`.
-- **Sample Response (201 Created):** Returns freshly created product.
+- **Body Data:**
+  - `name`: String (e.g., "Premium Cotton T-Shirt")
+  - `description`: String (e.g., "Breathable and stylish cotton shirt")
+  - `brand`: String (e.g., "Yogi")
+  - `category`: Category ObjectId
+  - `hasVariant`: String (`Yes` or `No`)
+  - `images`: File(s) (Global product images)
+  - **If `hasVariant` is "No":**
+    - `price`: Number (e.g., 999)
+    - `discountPrice`: Number (e.g., 799)
+    - `stock`: Number (e.g., 50)
+  - **If `hasVariant` is "Yes":** (Use indexed keys V1, V2, etc.)
+    - `V1_color`: String (e.g., "Red")
+    - `V1_size`: String (e.g., "XL")
+    - `V1_price`: Number
+    - `V1_discountPrice`: Number
+    - `V1_stock`: Number
+    - `V1_images`: File(s) (Images specific to Variant 1)
+- **Sample Response (201 Created):**
+  ```json
+  {
+    "_id": "60d...a1",
+    "name": "Premium Cotton T-Shirt",
+    "hasVariant": "Yes",
+    "price": 999,
+    "variants": [
+      {
+        "color": "Red",
+        "size": "XL",
+        "price": 999,
+        "images": ["url_to_cloudinary"]
+      }
+    ],
+    "createdAt": "2026-04-17T..."
+  }
+  ```
+
+
+### 2.12 Admin: Delete Product
+- **Method:** `DELETE`
+- **Path:** `/product/:id`
+- **Auth:** `Required (Admin Only)`
+- **Sample Response (200 OK):** `{ "message": "Product deleted successfully" }`
+
+### 2.13 Admin: Mark Out of Stock
+- **Method:** `PATCH`
+- **Path:** `/product/:id/stock/out-of-stock`
+- **Auth:** `Required (Admin Only)`
+- **Format:** `multipart/form-data`
+- **Body Data:**
+  - `all`: Boolean (Optional, set to `true` to make whole product and ALL variants stock = 0)
+  - `variantId`: String (Optional, to make only a specific variant stock = 0)
+- **Sample Body (JSON):**
+  ```json
+  {
+    "all": true,
+    "variantId": "66f1b...j0" 
+  }
+  ```
+- **Sample Response (200 OK):** Returns updated product object.
+
+### 2.14 Admin: Update Stock (Add Back / Bulk)
+- **Method:** `PATCH`
+- **Path:** `/product/:id/stock/update`
+- **Auth:** `Required (Admin Only)`
+- **Format:** `multipart/form-data` Or `JSON`
+- **Body Data:**
+  - `stock`: Number (Optional, used for single update)
+  - `variantId`: String (Optional, to target a single variant)
+  - `updates`: Array of Objects (Optional, used for bulk update)
+- **Sample Body (Bulk Update):**
+  ```json
+  {
+    "updates": [
+      { "variantId": "66f1b...01", "stock": 50 },
+      { "variantId": "66f1b...02", "stock": 30 },
+      { "variantId": "66f1b...03", "stock": 20 }
+    ]
+  }
+  ```
+- **Sample Body (Single Update):**
+  ```json
+  {
+    "stock": 50,
+    "variantId": "66f1b...01"
+  }
+  ```
+- **Sample Response (200 OK):** Returns updated product object.
 
 
 ---

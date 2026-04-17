@@ -84,6 +84,7 @@ router.post('/', authMiddleware, adminOnly, upload.any(), async (req, res) => {
   }
 });
 
+
 router.get('/', async (req, res) => {
   try {
     const products = await Product.find().populate('category', 'name slug').lean();
@@ -152,7 +153,7 @@ router.get('/thumbnail/trending', async (req, res) => {
 });
 
 
-// POST /thumbnail/batch - Fetch thumbnails for multiple product IDs (e.g., for Cart or Recent View)
+// POST /thumbnail/batch - Fetch thumbnails for multiple product IDs
 router.post('/thumbnail/batch', async (req, res) => {
   try {
     const { ids } = req.body;
@@ -165,7 +166,6 @@ router.post('/thumbnail/batch', async (req, res) => {
       .select('name brand images price discountPrice createdAt')
       .lean();
 
-    // Optionally sort the results to match the order of IDs passed
     const productsMap = products.reduce((acc, p) => {
       acc[p._id.toString()] = p;
       return acc;
@@ -183,7 +183,7 @@ router.post('/thumbnail/batch', async (req, res) => {
 });
 
 
-// GET /thumbnail - returning only name, brand, images, price, and discountPrice with pagination & sorting
+// GET /thumbnail - returning thumbnails with pagination & sorting
 router.get('/thumbnail', async (req, res) => {
   try {
     const { page = 1, limit = 10, sort, category } = req.query;
@@ -395,5 +395,88 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// Admin: Delete Product
+router.delete('/:id', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const product = await Product.findByIdAndDelete(req.params.id);
+    if (!product) return res.status(404).json({ error: 'Product not found' });
+    res.json({ message: 'Product deleted successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
+// Admin: Mark Product/Variant Out of Stock
+router.patch('/:id/stock/out-of-stock', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const { all, variantId } = req.body;
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ error: 'Product not found' });
+
+    if (all) {
+      // Make whole product out of stock
+      product.stock = 0;
+      product.variants.forEach(v => v.stock = 0);
+    } else if (variantId) {
+      // Make specific variant out of stock
+      const variant = product.variants.id(variantId);
+      if (!variant) return res.status(404).json({ error: 'Variant not found' });
+      variant.stock = 0;
+      variant.stock = 0;
+    }
+
+    // Universal Sync: Ensure top-level stock matches first variant for variant-based products
+    if (product.hasVariant === 'Yes' && product.variants.length > 0) {
+      product.stock = product.variants[0].stock;
+    }
+
+    await product.save();
+    res.json({ message: 'Stock updated to zero', product });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Admin: Update Stock (Add Back / Bulk Update)
+router.patch('/:id/stock/update', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const { variantId, stock, updates } = req.body;
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ error: 'Product not found' });
+
+    if (updates && Array.isArray(updates)) {
+      // Bulk update variants
+      updates.forEach(update => {
+        if (update.variantId) {
+          const variant = product.variants.id(update.variantId);
+          if (variant) variant.stock = update.stock;
+        }
+      });
+    } else if (stock !== undefined) {
+      // Single update
+      if (variantId && product.hasVariant === 'Yes') {
+        const variant = product.variants.id(variantId);
+        if (!variant) return res.status(404).json({ error: 'Variant not found' });
+        variant.stock = stock;
+      } else {
+        product.stock = stock;
+      }
+    }
+
+    // Universal Sync: Ensure top-level stock matches first variant for variant-based products
+    if (product.hasVariant === 'Yes' && product.variants.length > 0) {
+      product.stock = product.variants[0].stock;
+    }
+
+    await product.save();
+    res.json({ message: 'Stock updated successfully', product });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
 module.exports = router
