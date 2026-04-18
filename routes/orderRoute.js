@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Order = require('../models/orderModel');
 const Product = require('../models/productModel');
-const { generateJWT, generateOneTimeToken, adminOnly, authMiddleware } = require('../auth')
+const { generateJWT, generateOneTimeToken, adminOnly, staffOnly, authMiddleware } = require('../auth')
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const { sendEmail } = require('../utils/emailService');
@@ -400,7 +400,11 @@ router.get('/:id', authMiddleware, async (req, res) => {
     const order = await Order.findById(req.params.id).populate('user', 'name email');
     if (!order) return res.status(404).json({ error: 'Order not found' });
 
-    if (order.user._id.toString() !== req.user.id && req.user.role !== 'admin') {
+    const isPartner = req.user.role === 'partner';
+    const isAdmin = req.user.role === 'admin';
+    const isOwner = order.user._id.toString() === req.user.id;
+
+    if (!isOwner && !isAdmin && !isPartner) {
       return res.status(403).json({ error: 'Not authorized' });
     }
 

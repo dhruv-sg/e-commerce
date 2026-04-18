@@ -613,7 +613,7 @@ Get a paginated list of products matching a search query (checks name, brand, an
 ### 5.5 Get Order by ID (Privileged)
 - **Method:** `GET`
 - **Path:** `/order/:id`
-- **Auth:** Required (Must be Admin or the owner of the order)
+- **Auth:** Required (Admin, Partner, or the owner of the order)
 - **Sample Response (200 OK):** Returns order with populated `user.name` and `user.email`.
 
 ### 5.6 Admin: Get All Orders (Paginated & Filtered)

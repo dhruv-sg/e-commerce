@@ -31,8 +31,17 @@ const generateJWT = (userData)=>{
 }
 
 const adminOnly = (req, res, next) => {
-  if(!req.user || req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  if (!req.user || req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: Admin access required' });
+  }
   next();
 };
 
-module.exports = { authMiddleware, generateJWT, adminOnly, generateOneTimeToken: () => uuidv4() }
+const staffOnly = (req, res, next) => {
+  if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'partner')) {
+    return res.status(403).json({ error: 'Forbidden: Admin or Partner access required' });
+  }
+  next();
+};
+
+module.exports = { authMiddleware, generateJWT, adminOnly, staffOnly, generateOneTimeToken: () => uuidv4() }
