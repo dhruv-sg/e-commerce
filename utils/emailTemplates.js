@@ -151,12 +151,21 @@ exports.orderConfirmationTemplate = (order, settings) => {
     return emailBoilerplate('Order Confirmed', content, settings);
 };
 
-exports.orderStatusUpdateTemplate = (order, status, settings) => {
+exports.orderStatusUpdateTemplate = (order, status, settings, otp = null) => {
     const brandName = settings?.brandName || "Yogi Fashion";
     let statusEmoji = '🚚';
     let statusColor = '#0a3d30';
     if (status === 'Delivered') { statusEmoji = '✨'; statusColor = '#0a3d30'; }
     if (status === 'Cancelled') { statusEmoji = '✕'; statusColor = '#ef4444'; }
+
+    // Conditional OTP section for Shipped status
+    const otpSection = (status === 'Shipped' && otp) ? `
+    <div style="margin: 25px 0; background-color: #f9f9f9; border: 1px dashed #0a3d30; padding: 20px; text-align: center;">
+        <p style="margin: 0 0 10px 0; font-size: 11px; color: #666666; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Delivery Verification Code</p>
+        <span style="font-size: 28px; font-weight: 800; letter-spacing: 8px; color: #0a3d30;">${otp}</span>
+        <p style="margin: 10px 0 0 0; font-size: 11px; color: #666666;">Please share this code with the delivery associate to receive your package.</p>
+    </div>
+    ` : '';
 
     const content = `
     <tr>
@@ -169,6 +178,9 @@ exports.orderStatusUpdateTemplate = (order, status, settings) => {
                 <div style="display: inline-block; padding: 10px 24px; border: 2px solid ${statusColor}; color: ${statusColor}; font-weight: 800; font-size: 14px; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px;">
                     ${status}
                 </div>
+                
+                ${otpSection}
+
                 <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #1a1a1a;">
                     ${status === 'Shipped' ? 'Your package has been dispatched and is currently on its way' : ''}
                     ${status === 'Delivered' ? 'Your package has been delivered successfully. We hope you love it!' : ''}

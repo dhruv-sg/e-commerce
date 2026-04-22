@@ -636,19 +636,25 @@ Get a paginated list of products matching a search query (checks name, brand, an
 - }
 - ```
 
-### 5.7 Admin: Update Order Status
+### 5.7 Admin/Partner: Update Order Status
 - **Method:** `PUT`
 - **Path:** `/order/status`
-- **Auth:** Required (Admin Only)
+- **Auth:** `Required (Admin or Partner)`
 - **Format:** `multipart/form-data`
 - **Body Data:**
   ```json
   {
     "orderId": "id_here",
     "status": "Shipped",          // Optional (enum: 'PENDING_PAYMENT', 'Processing', 'Shipped', 'Delivered', 'Cancelled')
-    "paymentStatus": "PAID"       // Optional (enum: 'UNPAID', 'PAID', 'FAILED', 'REFUNDED')
+    "paymentStatus": "PAID",       // Optional (enum: 'UNPAID', 'PAID', 'FAILED', 'REFUNDED')
+    "otp": "123456"               // Required ONLY for Partners when setting status to 'Delivered'
   }
   ```
+- **New Secure Workflow:**
+  - When status is set to **'Shipped'**, a 6-digit **Delivery OTP** is generated and emailed to the customer.
+  - When status is set to **'Delivered'**:
+    - **Partners** must provide the correct `otp` in the request body.
+    - **Admins** can update without providing an OTP.
 - **Sample Response (200 OK):** Triggers user email update and returns updated order object.
 
 

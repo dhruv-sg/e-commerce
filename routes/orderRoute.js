@@ -415,10 +415,10 @@ router.get('/:id', authMiddleware, async (req, res) => {
   }
 });
 
-// Admin: Update order status
-router.put('/status', authMiddleware, adminOnly, async (req, res) => {
+// Admin/Partner: Update order status
+router.put('/status', authMiddleware, staffOnly, async (req, res) => {
   try {
-    const { orderId, status, paymentStatus } = req.body;
+    const { orderId, status, paymentStatus, otp } = req.body;
 
     if (!orderId) return res.status(400).json({ error: 'orderId is required in body' });
 
@@ -430,7 +430,30 @@ router.put('/status', authMiddleware, adminOnly, async (req, res) => {
     const order = await Order.findById(orderId).populate('user', 'email');
     if (!order) return res.status(404).json({ error: 'Order not found' });
 
+    // Delivery Partner Verification Logic
+    if (status === 'Delivered' && req.user.role === 'partner') {
+      if (!otp) return res.status(400).json({ error: 'Delivery OTP is required for partners' });
+      if (otp !== order.deliveryOtp) {
+        return res.status(400).json({ error: 'Invalid Delivery OTP' });
+      }
+    }
+
+    // Generate OTP when shipping
+    if (status === 'Shipped') {
+      // Only generate if not already exists (prevent overwriting if status updated multiple times)
+      if (!order.deliveryOtp) {
+        order.deliveryOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      }
+    }
+
     if (status) order.status = status;
+
+    // COD Auto-Payment Logic: If COD and delivered, mark as PAID
+    if (order.status === 'Delivered' && order.paymentMethod === 'COD') {
+      order.paymentStatus = 'PAID';
+    }
+
+    // Overwrite with manually provided status if present
     if (paymentStatus) order.paymentStatus = paymentStatus;
 
     await order.save();
@@ -441,7 +464,13 @@ router.put('/status', authMiddleware, adminOnly, async (req, res) => {
         const { Settings } = require('../models/settingsModel');
         const settings = await Settings.findOne();
         const brandName = settings?.brandName || "Yogi Fashion";
-        await sendEmail(order.user.email, `Order Status Update: ${status} - ${brandName}`, orderStatusUpdateTemplate(order, status, settings));
+        
+        // Pass OTP to email template if it exists
+        await sendEmail(
+          order.user.email, 
+          `Order Status Update: ${status} - ${brandName}`, 
+          orderStatusUpdateTemplate(order, status, settings, order.deliveryOtp)
+        );
       } catch (emailErr) {
         console.error("Failed to send status update email:", emailErr);
       }

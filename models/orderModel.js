@@ -72,6 +72,10 @@ const OrderSchema = new mongoose.Schema({
         enum: ['PENDING_PAYMENT', 'Processing', 'Shipped', 'Delivered', 'Cancelled'],
         default: 'PENDING_PAYMENT'
     },
+    deliveryOtp: {
+        type: String,
+        default: null
+    },
     createdAt: {
         type: Date,
         default: Date.now
